@@ -19,7 +19,16 @@ const gameState = {
     ritualStones: 0,
     scrapMetal: 0,
     crystal: 0,
-    bone: 0
+    bone: 0,
+    charcoal: 0,
+    ore: 0,
+    clay: 0,
+    fiber: 0,
+    sulfur: 0,
+    gold: 0,
+    obsidian: 0,
+    essence: 0,
+    void: 0
   },
   capacity: {
     current: 0,
@@ -54,24 +63,25 @@ const gameState = {
     playerX: 50,
     scrollX: 0,
     lastFrame: 0,
-    lastEnemyDamage: 0
-    , floatingTexts: [],
-    particles: []
+    lastEnemyDamage: 0,
+    floatingTexts: [],
+    particles: [],
+    projectiles: []
   }
 };
 
 // Game Data
 const areas = [
-  { name: "Forest Path", enemies: 5, boss: false, unlockIdle: null, unlockables: [], mapLength: 2000, spawnRate: 2000, background: "forest" },
-  { name: "Dark Woods", enemies: 8, boss: true, unlockIdle: "autoWood", unlockables: [], mapLength: 2200, spawnRate: 1800, background: "woods" },
-  { name: "Mountain Trail", enemies: 10, boss: false, unlockIdle: "stoneGathering", unlockables: [], mapLength: 2500, spawnRate: 2000, background: "mountain" },
-  { name: "River Crossing", enemies: 12, boss: false, unlockIdle: "waterGathering", unlockables: [], mapLength: 2600, spawnRate: 1800, background: "river" },
-  { name: "Plains", enemies: 15, boss: false, unlockIdle: "plantGathering", unlockables: ["boneGathering"], mapLength: 3000, spawnRate: 1600, background: "plains" },
-  { name: "Cave System", enemies: 18, boss: false, unlockIdle: "ritualStoneGathering", unlockables: ["ritualStoneGathering"], mapLength: 3200, spawnRate: 1700, background: "cave" },
-  { name: "Ancient Temple", enemies: 20, boss: true, unlockIdle: "advancedCrafting", unlockables: ["advancedCrafting"], mapLength: 3500, spawnRate: 1500, background: "temple" },
-  { name: "Shadow Realm", enemies: 25, boss: false, unlockIdle: null, unlockables: ["scrapGathering"], mapLength: 3800, spawnRate: 1400, background: "shadow" },
-  { name: "Magical Tower", enemies: 30, boss: false, unlockIdle: "powerfulUpgrades", unlockables: ["crystalGathering"], mapLength: 4200, spawnRate: 1300, background: "tower" },
-  { name: "Final Sanctum", enemies: 35, boss: true, unlockIdle: null, unlockables: [], mapLength: 5000, spawnRate: 1200, background: "sanctum" }
+  { name: "Forest Path", enemies: 5, boss: false, unlockIdle: null, unlockables: [], mapLength: 2000, spawnRate: 2000, background: "forest", unlockedMaterial: null },
+  { name: "Dark Woods", enemies: 8, boss: true, unlockIdle: "autoWood", unlockables: [], mapLength: 2200, spawnRate: 1800, background: "woods", unlockedMaterial: "charcoal" },
+  { name: "Mountain Trail", enemies: 10, boss: false, unlockIdle: "stoneGathering", unlockables: [], mapLength: 2500, spawnRate: 2000, background: "mountain", unlockedMaterial: "ore" },
+  { name: "River Crossing", enemies: 12, boss: false, unlockIdle: "waterGathering", unlockables: [], mapLength: 2600, spawnRate: 1800, background: "river", unlockedMaterial: "clay" },
+  { name: "Plains", enemies: 15, boss: false, unlockIdle: "plantGathering", unlockables: ["boneGathering"], mapLength: 3000, spawnRate: 1600, background: "plains", unlockedMaterial: "fiber" },
+  { name: "Cave System", enemies: 18, boss: false, unlockIdle: "ritualStoneGathering", unlockables: ["ritualStoneGathering"], mapLength: 3200, spawnRate: 1700, background: "cave", unlockedMaterial: "sulfur" },
+  { name: "Ancient Temple", enemies: 20, boss: true, unlockIdle: "advancedCrafting", unlockables: ["advancedCrafting"], mapLength: 3500, spawnRate: 1500, background: "temple", unlockedMaterial: "gold" },
+  { name: "Shadow Realm", enemies: 25, boss: false, unlockIdle: null, unlockables: ["scrapGathering"], mapLength: 3800, spawnRate: 1400, background: "shadow", unlockedMaterial: "obsidian" },
+  { name: "Magical Tower", enemies: 30, boss: false, unlockIdle: "powerfulUpgrades", unlockables: ["crystalGathering"], mapLength: 4200, spawnRate: 1300, background: "tower", unlockedMaterial: "essence" },
+  { name: "Final Sanctum", enemies: 35, boss: true, unlockIdle: null, unlockables: [], mapLength: 5000, spawnRate: 1200, background: "sanctum", unlockedMaterial: "void" }
 ];
 
 // ASCII Art for characters
@@ -107,25 +117,52 @@ const enemyASCII = {
 
 // Simple ASCII art for items/recipes (used in inventory and crafting/shop)
 const itemAsciiArt = {
+  // Swords
   woodenSword: [` /\\ `, `/==\\`, ` || `],
   stoneSword: [` /\\ `, `/##\\`, ` || `],
+  longsword: [` /\\ `, `|===|`, ` |||| `],
+  claymore: [` /\\ `, `|###|`, `  ||  `],
+  
+  // Short weapons
+  dagger: [` / `, `|=|`, ` | `],
+  ironDagger: [` / `, `|#|`, ` | `],
+  handAxe: [`  >> `, ` \\|/ `, `  |  `],
+  mace: [` ___ `, `|###|`, `  |  `],
+  
   huntingSling: [` ( ) `, `/ | \\`, `  '  `],
   spearThrower: [` /|\\`, ` / \\`, `  |  `],
   crystalRecurve: [` <* > `, ` /|\\ `, `  |  `],
+  flameBow: [` <*> `, ` /|\\ `, `  *  `],
+  
   heavyClub: [`  __ `, ` /__\\`, `  || `],
   throwingSpear: [` ->--`, `  |  `, `  ^  `],
   metalMaul: [` [##] `, `  ||  `, `  ||  `],
+  warhammer: [` [###] `, `  |||  `, `  |||  `],
+  obsidianBlade: [` /\\ `, `|∞∞∞|`, `  ||  `],
+  
   woodenShield: [` [ ] `, ` | | `, `     `],
   stoneShield: [` [#] `, ` |#| `, `     `],
   metalShield: [` [M] `, ` |M| `, `     `],
+  oreShield: [` [O] `, ` |O| `, `     `],
+  obsidianShield: [` [∞] `, ` |∞| `, `     `],
+  
   leatherArmor: [` /\\ `, `|--|`, ` || `],
   boneArmor: [` /\\ `, `|==|`, ` || `],
   magicArmor: [` <M> `, `|MMM|`, ` || `],
+  oreArmor: [` <O> `, `|OOO|`, ` || `],
+  voidArmor: [` <∞> `, `|∞∞∞|`, ` || `],
+  
   healingPotion: [` ~~~ `, `(+ )`, ` ~~~ `],
   strongHealingPotion: [` ~~~ `, `(++ )`, ` ~~~ `],
+  essencePotion: [` ~~~ `, `(+*)`, ` ~~~ `],
+  
   backpack: [` [B] `, `| B |`, `     `],
   reinforcedBackpack: [` [R] `, `| R |`, `     `],
+  magicSatchel: [` [*] `, `| * |`, `     `],
+  
   gatherRitualStones: [`  ▲  `, ` ▲▲ `, `  ▲  `],
+  
+  // Resources
   wood: [`  /// `, ` /|\\ `, `  |  `],
   meat: [`  ><> `, ` ( ) `, `  ~~ `],
   water: [`  ~~~ `, ` ~~~ `, `  ~~~ `],
@@ -136,6 +173,21 @@ const itemAsciiArt = {
   scrapMetal: [`  ::: `, ` :M: `, `  ::: `],
   crystal: [`  <>  `, ` <*> `, `  <>  `],
   bone: [`  ||  `, ` /\\ `, `  ||  `],
+  charcoal: [`  ███ `, ` ███ `, `  ███ `],
+  ore: [`  ■■  `, ` ■■■ `, `  ■■  `],
+  clay: [`  ▒▒▒ `, ` ▒▒▒ `, `  ▒▒▒ `],
+  fiber: [`  ░░░ `, ` ░░░░ `, `  ░░░ `],
+  sulfur: [`  ⚡⚡  `, ` ⚡⚡⚡ `, `  ⚡⚡  `],
+  gold: [`  ◊◊  `, ` ◊◊◊ `, `  ◊◊  `],
+  obsidian: [`  ∞∞  `, ` ∞∞∞ `, `  ∞∞  `],
+  essence: [`  ◈◈  `, ` ◈◈◈ `, `  ◈◈  `],
+  void: [`  ◆◆  `, ` ◆◆◆ `, `  ◆◆  `],
+  
+  // Projectiles
+  projectile_sling: [`-->`, `  `],
+  projectile_spear: [`->>`, ` ` ],
+  projectile_arrow: [`->`, ` `],
+  
   default: [` [ ] `, `  ?  `, `     `]
 };
 
@@ -150,7 +202,16 @@ const resourceDisplayNames = {
   ritualStones: 'Ritual Stones',
   scrapMetal: 'Scrap Metal',
   crystal: 'Crystal',
-  bone: 'Bone'
+  bone: 'Bone',
+  charcoal: 'Charcoal',
+  ore: 'Ore',
+  clay: 'Clay',
+  fiber: 'Fiber',
+  sulfur: 'Sulfur',
+  gold: 'Gold',
+  obsidian: 'Obsidian',
+  essence: 'Essence',
+  void: 'Void Essence'
 };
 
 function getAsciiForId(id, obj) {
@@ -186,44 +247,67 @@ const gatheringActions = [
   { id: "gatherRitualStones", name: "Harvest Ritual Stones", time: 15000, cost: {}, reward: { ritualStones: 1 }, xp: 5, unlock: "ritualStoneGathering" },
   { id: "gatherBone", name: "Collect Bones", time: 8000, cost: {}, reward: { bone: 1 }, xp: 1, unlock: "boneGathering" },
   { id: "gatherCrystal", name: "Mine Crystals", time: 12000, cost: {}, reward: { crystal: 1 }, xp: 3, unlock: "crystalGathering" },
-  { id: "gatherScrapMetal", name: "Salvage Scrap Metal", time: 11000, cost: {}, reward: { scrapMetal: 1 }, xp: 2, unlock: "scrapGathering" }
+  { id: "gatherScrapMetal", name: "Salvage Scrap Metal", time: 11000, cost: {}, reward: { scrapMetal: 1 }, xp: 2, unlock: "scrapGathering" },
+  { id: "gatherCharcoal", name: "Harvest Charcoal", time: 9000, cost: {}, reward: { charcoal: 1 }, xp: 2, unlock: "charcoalGathering" },
+  { id: "gatherOre", name: "Mine Ore", time: 13000, cost: {}, reward: { ore: 1 }, xp: 3, unlock: "oreGathering" },
+  { id: "gatherClay", name: "Dig Clay", time: 10000, cost: {}, reward: { clay: 1 }, xp: 2, unlock: "clayGathering" },
+  { id: "gatherFiber", name: "Harvest Fiber", time: 8000, cost: {}, reward: { fiber: 1 }, xp: 2, unlock: "fiberGathering" },
+  { id: "gatherSulfur", name: "Collect Sulfur", time: 12000, cost: {}, reward: { sulfur: 1 }, xp: 3, unlock: "sulfurGathering" },
+  { id: "gatherGold", name: "Pan for Gold", time: 15000, cost: {}, reward: { gold: 1 }, xp: 4, unlock: "goldGathering" },
+  { id: "gatherObsidian", name: "Cut Obsidian", time: 14000, cost: {}, reward: { obsidian: 1 }, xp: 4, unlock: "obsidianGathering" },
+  { id: "gatherEssence", name: "Extract Essence", time: 16000, cost: {}, reward: { essence: 1 }, xp: 5, unlock: "essenceGathering" },
+  { id: "gatherVoid", name: "Harvest Void Essence", time: 20000, cost: {}, reward: { void: 1 }, xp: 6, unlock: "voidGathering" }
 ];
 
 const craftingRecipes = [
   // Basic Weapons (speed: higher = faster DPS)
   { id: "woodenSword", name: "Wooden Sword", cost: { wood: 5 }, type: "weapon", weaponType: "sword", stats: { attack: 2, speed: 1.0 }, description: "Basic melee weapon" },
   { id: "stoneSword", name: "Stone Sword", cost: { wood: 3, stone: 5 }, type: "weapon", weaponType: "sword", stats: { attack: 4, speed: 0.95 }, description: "Reliable sword with stone edge" },
+  { id: "longsword", name: "Longsword", cost: { wood: 5, ore: 8, charcoal: 3 }, type: "weapon", weaponType: "sword", stats: { attack: 6, speed: 0.85 }, description: "A powerful two-handed sword", unlock: "oreGathering" },
+  { id: "claymore", name: "Claymore", cost: { ore: 12, coal: 5, gold: 2 }, type: "weapon", weaponType: "sword", stats: { attack: 9, speed: 0.75 }, description: "Massive greatsword for maximum damage", unlock: "goldGathering" },
+  
+  // Short weapons (one-handed, work with shields)
+  { id: "dagger", name: "Dagger", cost: { wood: 2, stone: 3 }, type: "weapon", weaponType: "shortsword", stats: { attack: 1.5, speed: 1.5 }, description: "Quick and deadly, pairs well with shields" },
+  { id: "ironDagger", name: "Iron Dagger", cost: { ore: 5, charcoal: 2 }, type: "weapon", weaponType: "shortsword", stats: { attack: 3, speed: 1.6 }, description: "Sharpened iron blade", unlock: "oreGathering" },
+  { id: "handAxe", name: "Hand Axe", cost: { wood: 4, stone: 6 }, type: "weapon", weaponType: "shortsword", stats: { attack: 2.5, speed: 1.2 }, description: "Small and efficient axe" },
+  { id: "mace", name: "Mace", cost: { ore: 6, stone: 4 }, type: "weapon", weaponType: "shortsword", stats: { attack: 3.5, speed: 1.0 }, description: "Crushing weapon effective against armor", unlock: "oreGathering" },
   
   // Bows (fast, ranged, lower damage)
-  { id: "huntingSling", name: "Hunting Sling", cost: { wood: 8, hide: 2 }, type: "weapon", weaponType: "bow", stats: { attack: 3, speed: 1.3, range: 220 }, description: "A simple sling for hunting small prey" },
-  { id: "spearThrower", name: "Spear Thrower", cost: { wood: 5, stone: 8, hide: 3 }, type: "weapon", weaponType: "bow", stats: { attack: 5, speed: 1.2, range: 320 }, description: "A device that increases thrown spear range and power" },
-  { id: "crystalRecurve", name: "Crystal Recurve", cost: { wood: 5, crystal: 5, hide: 4 }, type: "weapon", weaponType: "bow", stats: { attack: 7, speed: 1.4, range: 420 }, description: "A reinforced recurve with crystal limbs", unlock: "crystalGathering" },
+  { id: "huntingSling", name: "Hunting Sling", cost: { wood: 8, hide: 2 }, type: "weapon", weaponType: "bow", stats: { attack: 3, speed: 1.3, range: 220 }, description: "A simple sling for hunting small prey", projectile: "projectile_sling" },
+  { id: "spearThrower", name: "Spear Thrower", cost: { wood: 5, stone: 8, hide: 3 }, type: "weapon", weaponType: "bow", stats: { attack: 5, speed: 1.2, range: 320 }, description: "A device that increases thrown spear range and power", projectile: "projectile_spear" },
+  { id: "crystalRecurve", name: "Crystal Recurve", cost: { wood: 5, crystal: 5, hide: 4 }, type: "weapon", weaponType: "bow", stats: { attack: 7, speed: 1.4, range: 420 }, description: "A reinforced recurve with crystal limbs", unlock: "crystalGathering", projectile: "projectile_arrow" },
+  { id: "flameBow", name: "Flame Bow", cost: { essence: 3, charcoal: 5, fiber: 4 }, type: "weapon", weaponType: "bow", stats: { attack: 8, speed: 1.3, range: 380 }, description: "Bow enchanted with fire essence", unlock: "essenceGathering", projectile: "projectile_arrow" },
   
   // Heavy Weapons (slow, high damage)
   { id: "heavyClub", name: "Heavy Club", cost: { wood: 10, stone: 3 }, type: "weapon", weaponType: "heavy", stats: { attack: 6, speed: 0.7 }, description: "A blunt club designed to stagger foes" },
   { id: "throwingSpear", name: "Throwing Spear", cost: { wood: 8, stone: 10, bone: 2 }, type: "weapon", weaponType: "heavy", stats: { attack: 9, speed: 0.6 }, description: "A heavy spear optimized for throwing", unlock: "boneGathering" },
   { id: "metalMaul", name: "Metal Maul", cost: { scrapMetal: 8, stone: 5, wood: 6 }, type: "weapon", weaponType: "heavy", stats: { attack: 11, speed: 0.5 }, description: "A crushing metal maul", unlock: "scrapGathering" },
+  { id: "warhammer", name: "Warhammer", cost: { ore: 10, gold: 3, wood: 5 }, type: "weapon", weaponType: "heavy", stats: { attack: 13, speed: 0.6 }, description: "Legendary two-handed hammer", unlock: "goldGathering" },
+  { id: "obsidianBlade", name: "Obsidian Blade", cost: { obsidian: 8, essence: 2, bone: 4 }, type: "weapon", weaponType: "heavy", stats: { attack: 14, speed: 0.65 }, description: "Dark and sinister, cuts through defenses", unlock: "obsidianGathering" },
   
-  // Shields (defense, can only pair with small weapons)
+  // Shields (defense, work with short weapons and one-handed weapons)
   { id: "woodenShield", name: "Wooden Shield", cost: { wood: 12, hide: 2 }, type: "weapon", weaponType: "shield", stats: { defense: 3 }, description: "Basic protection shield" },
   { id: "stoneShield", name: "Stone Shield", cost: { wood: 8, stone: 12, hide: 3 }, type: "weapon", weaponType: "shield", stats: { defense: 5 }, description: "Heavy stone shield for more protection" },
   { id: "metalShield", name: "Metal Shield", cost: { scrapMetal: 10, stone: 8, hide: 4 }, type: "weapon", weaponType: "shield", stats: { defense: 7 }, description: "Reinforced metal shield blocks more damage", unlock: "scrapGathering" },
+  { id: "oreShield", name: "Ore Shield", cost: { ore: 12, gold: 2, hide: 5 }, type: "weapon", weaponType: "shield", stats: { defense: 9 }, description: "Heavy ore shield with excellent defense", unlock: "oreGathering" },
+  { id: "obsidianShield", name: "Obsidian Shield", cost: { obsidian: 10, essence: 3, void: 1 }, type: "weapon", weaponType: "shield", stats: { defense: 11 }, description: "A shield of pure void, blocks almost anything", unlock: "obsidianGathering" },
   
   // Armor
   { id: "leatherArmor", name: "Leather Armor", cost: { hide: 5 }, type: "armor", stats: { defense: 2 }, description: "Light protective clothing" },
   { id: "boneArmor", name: "Bone Armor", cost: { hide: 8, bone: 6 }, type: "armor", stats: { defense: 4 }, description: "Armor reinforced with bone plates", unlock: "boneGathering" },
   { id: "magicArmor", name: "Magic Armor", cost: { hide: 5, ritualStones: 5, crystal: 3 }, type: "armor", stats: { defense: 5 }, description: "Enchanted armor with magical resilience", unlock: "advancedCrafting" },
+  { id: "oreArmor", name: "Ore Armor", cost: { ore: 10, charcoal: 5, hide: 6 }, type: "armor", stats: { defense: 7 }, description: "Heavy ore plate armor", unlock: "oreGathering" },
+  { id: "voidArmor", name: "Void Armor", cost: { obsidian: 8, essence: 5, void: 2 }, type: "armor", stats: { defense: 10 }, description: "Armor woven from void essence, nearly impenetrable", unlock: "voidGathering" },
   
   // Potions and Consumables
   { id: "healingPotion", name: "Healing Potion", cost: { plants: 2, water: 1 }, type: "consumable", effect: { hp: 10 }, description: "Restores 10 HP" },
   { id: "strongHealingPotion", name: "Strong Healing Potion", cost: { plants: 5, water: 3, crystal: 2 }, type: "consumable", effect: { hp: 25 }, description: "Restores 25 HP, made with crystals", unlock: "crystalGathering" },
+  { id: "essencePotion", name: "Essence Potion", cost: { essence: 3, plants: 8, water: 5 }, type: "consumable", effect: { hp: 40 }, description: "Restores 40 HP with magical properties", unlock: "essenceGathering" },
   
   // Capacity Upgrades (items)
   { id: "backpack", name: "Backpack", cost: { wood: 8, hide: 5 }, type: "capacity", capacityBonus: 50, description: "Increases inventory capacity by 50" },
   { id: "reinforcedBackpack", name: "Reinforced Backpack", cost: { hide: 10, stone: 8, scrapMetal: 3 }, type: "capacity", capacityBonus: 75, description: "Increases inventory capacity by 75", unlock: "scrapGathering" },
-  
-  // Magic Items
-  // magicSword removed - enchanting system will provide configurable enchantments
+  { id: "magicSatchel", name: "Magic Satchel", cost: { essence: 5, fiber: 8, crystal: 4 }, type: "capacity", capacityBonus: 100, description: "Magically enlarged satchel holds more items", unlock: "essenceGathering" }
 ];
 
 // Enchant effects available for items (applied via magic menu)
@@ -630,6 +714,7 @@ function refreshCraftingMenu() {
   // Group recipes into labeled categories and render grids to reduce clutter
   const categories = {
     swords: { title: 'Swords', filter: r => r.type === 'weapon' && r.weaponType === 'sword' },
+    shortswords: { title: 'Short Weapons', filter: r => r.type === 'weapon' && r.weaponType === 'shortsword' },
     bows: { title: 'Ranged', filter: r => r.type === 'weapon' && r.weaponType === 'bow' },
     heavy: { title: 'Heavy Weapons', filter: r => r.type === 'weapon' && r.weaponType === 'heavy' },
     shields: { title: 'Shields', filter: r => r.type === 'weapon' && r.weaponType === 'shield' },
@@ -836,7 +921,7 @@ function refreshStructuresMenu() {
         `;
       
       const btn = el(`structure-${structure.id}`);
-      if (btn && canAffordStructure) {
+      if (btn) {
         btn.addEventListener("click", () => buildStructure(structure));
       }
     }
@@ -1139,22 +1224,24 @@ function showAreaSelection() {
 
 function useInventoryItem(itemId, item) {
   if (item.type === "weapon") {
-    // Check weapon constraints
+    // Check weapon constraints - shields work with small weapons and swords, not heavy weapons
     if (item.weaponType === "heavy" && gameState.equipped.armor && gameState.equipped.armor.weaponType === "shield") {
-      addLog(`Cannot equip heavy weapon with shield - shields only work with small weapons`);
+      addLog(`Cannot equip heavy weapon with shield`);
       return;
     }
     if (item.weaponType === "shield" && gameState.equipped.weapon && gameState.equipped.weapon.weaponType === "heavy") {
-      addLog(`Cannot equip shield with heavy weapon - shields only work with small weapons`);
+      addLog(`Cannot equip shield with heavy weapon`);
       return;
     }
     
     gameState.equipped.weapon = item;
+    gameState.equipped.weapon.id = itemId; // Store ID for tracking
     addLog(`Equipped ${item.name}`);
     refreshStats();
     refreshInventory();
   } else if (item.type === "armor") {
     gameState.equipped.armor = item;
+    gameState.equipped.armor.id = itemId; // Store ID for tracking
     addLog(`Equipped ${item.name}`);
     refreshStats();
     refreshInventory();
@@ -1422,28 +1509,141 @@ function gameLoop() {
       }
     }
   }
+
+  // Update and check projectile collisions
+  if (gameState.combat.projectiles && gameState.combat.projectiles.length) {
+    for (let i = gameState.combat.projectiles.length - 1; i >= 0; i--) {
+      const proj = gameState.combat.projectiles[i];
+      proj.x += proj.vx * deltaTime;
+      proj.y += proj.vy * deltaTime;
+      proj.vy += 100 * deltaTime; // gravity
+      
+      // Check collision with enemies
+      for (let j = 0; j < gameState.combat.enemies.length; j++) {
+        const enemy = gameState.combat.enemies[j];
+        const enemyScreenX = enemy.x - gameState.combat.scrollX;
+        const dist = Math.sqrt(Math.pow(proj.x - enemyScreenX, 2) + Math.pow(proj.y - enemy.y, 2));
+        
+        if (dist < 20 && !proj.hit) {
+          // Hit!
+          proj.hit = true;
+          const weaponDamage = (proj.weapon && proj.weapon.stats) ? proj.weapon.stats.attack || 1 : 1;
+          const damage = Math.max(1, weaponDamage - enemy.defense * 0.5);
+          enemy.hp -= damage;
+          
+          // Floating text
+          if (gameState.combat.floatingTexts) {
+            gameState.combat.floatingTexts.push({
+              x: enemyScreenX,
+              y: enemy.y - 20,
+              text: `-${Math.ceil(damage)}`,
+              ttl: 1.0,
+              alpha: 1,
+              color: '#f88'
+            });
+          }
+          
+          // Impact particles
+          if (gameState.combat.particles) {
+            for (let x = 0; x < 5; x++) {
+              gameState.combat.particles.push({
+                x: proj.x,
+                y: proj.y,
+                vx: (Math.random() - 0.5) * 80,
+                vy: -Math.random() * 60,
+                life: 0.5,
+                maxLife: 0.5,
+                color: '#f88',
+                size: 2
+              });
+            }
+          }
+          
+          // Check if enemy died from projectile
+          if (enemy.hp <= 0) {
+            const xpGained = enemy.xp || 0;
+            addXP(xpGained);
+            addLog(`Defeated ${enemy.name} (+${xpGained} XP)`);
+            refreshStats();
+            gameState.combat.enemies.splice(j, 1);
+          }
+          break;
+        }
+      }
+      
+      // Remove if off-screen or hit
+      if (proj.hit || proj.x < 0 || proj.x > gameCanvas.width || proj.y > gameCanvas.height) {
+        gameState.combat.projectiles.splice(i, 1);
+      }
+    }
+  }
+
   if (blockingEnemy) {
     const { enemy, index } = blockingEnemy;
     
-    // Deal damage to enemy continuously while touching
+    // Ranged weapon: spawn projectiles toward target
     const equipped = gameState.equipped.weapon;
-    const baseAttack = gameState.player.attack + (equipped ? (equipped.stats.attack || 0) : 0);
-    const speedMult = equipped ? (equipped.stats.speed || 1) : 1;
+    if (equipped && equipped.weaponType === "bow" && equipped.stats.range) {
+      // Fire projectiles at intervals based on weapon speed
+      const fireRate = 0.5 / equipped.stats.speed; // seconds between shots
+      if (!enemy.lastProjectileFire) enemy.lastProjectileFire = Date.now();
+      const timeSinceFire = (Date.now() - enemy.lastProjectileFire) / 1000;
+      
+      if (timeSinceFire > fireRate) {
+        // Spawn projectile from player toward enemy
+        gameState.combat.projectiles = gameState.combat.projectiles || [];
+        const projectileAscii = itemAsciiArt[equipped.projectile] || itemAsciiArt.projectile_arrow;
+        gameState.combat.projectiles.push({
+          x: gameState.combat.playerX + 20,
+          y: 310,
+          targetX: enemy.x - gameState.combat.scrollX,
+          targetY: enemy.y + 10,
+          vx: (enemy.x - gameState.combat.scrollX - gameState.combat.playerX) * 2,
+          vy: (enemy.y + 10 - 310) * 1.5,
+          damage: (equipped.stats.attack || 1) * (equipped.stats.speed || 1),
+          ascii: projectileAscii,
+          hit: false,
+          weapon: equipped
+        });
+        enemy.lastProjectileFire = Date.now();
+        
+        // Add recoil particle effect
+        if (gameState.combat.particles) {
+          gameState.combat.particles.push({
+            x: gameState.combat.playerX + 5,
+            y: 315,
+            vx: -30,
+            vy: 10,
+            life: 0.3,
+            maxLife: 0.3,
+            color: '#6ef',
+            size: 2
+          });
+        }
+      }
+    }
+    
+    // Melee weapon: deal damage directly
+    if (!equipped || equipped.weaponType !== "bow") {
+      // Deal damage to enemy continuously while touching
+      const baseAttack = gameState.player.attack + (equipped ? (equipped.stats.attack || 0) : 0);
+      const speedMult = equipped ? (equipped.stats.speed || 1) : 1;
 
-    // Apply weaken effect on enemy (temporary defense reduction)
-    const weakenReduction = enemy.effects && enemy.effects.weaken ? (enemy.effects.weaken.defenseReduction || 0) : 0;
+      // Apply weaken effect on enemy (temporary defense reduction)
+      const weakenReduction = enemy.effects && enemy.effects.weaken ? (enemy.effects.weaken.defenseReduction || 0) : 0;
 
-    const playerDPS = Math.max(1, (baseAttack * speedMult) - Math.max(0, enemy.defense - weakenReduction));
-    const damageDealt = playerDPS * deltaTime;
-    enemy.hp -= damageDealt;
+      const playerDPS = Math.max(1, (baseAttack * speedMult) - Math.max(0, enemy.defense - weakenReduction));
+      const damageDealt = playerDPS * deltaTime;
+      enemy.hp -= damageDealt;
 
-    // Apply life steal if weapon has it
-    if (equipped && equipped.effect && equipped.effect.lifeSteal && equipped.effect.lifeSteal.percent) {
-      const heal = damageDealt * (equipped.effect.lifeSteal.percent || 0);
-      gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + heal);
-      // floating heal text
-      if (heal > 0.01 && gameState.combat.floatingTexts) {
-        gameState.combat.floatingTexts.push({ x: gameState.combat.playerX, y: 280, text: `+${Math.ceil(heal)}`, ttl: 0.9, alpha: 1, color: '#8f8' });
+      // Apply life steal if weapon has it
+      if (equipped && equipped.effect && equipped.effect.lifeSteal && equipped.effect.lifeSteal.percent) {
+        const heal = damageDealt * (equipped.effect.lifeSteal.percent || 0);
+        gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + heal);
+        // floating heal text
+        if (heal > 0.01 && gameState.combat.floatingTexts) {
+          gameState.combat.floatingTexts.push({ x: gameState.combat.playerX, y: 280, text: `+${Math.ceil(heal)}`, ttl: 0.9, alpha: 1, color: '#8f8' });
+        }
       }
     }
 
@@ -1591,34 +1791,147 @@ function drawASCII(text, x, y, color, fontSize = 12) {
   });
 }
 
-function drawBackground() {
+// Get player ASCII representation with equipped items
+function getPlayerASCIIWithEquipment() {
+  const hasWeapon = gameState.equipped.weapon;
+  const hasArmor = gameState.equipped.armor;
+  
+  // Base player
+  let playerASCII = ["  O  ", " /|\\ ", " / \\ "];
+  
+  if (hasArmor && hasArmor.weaponType === "shield") {
+    // With shield - show on left side
+    if (hasWeapon && hasWeapon.weaponType !== "bow") {
+      // Weapon + shield combo
+      return [" [ O  ", "[/|\\\\", "[ / \\ "];
+    } else if (hasWeapon && hasWeapon.weaponType === "bow") {
+      // Bow + shield
+      return [" [ O> ", "[/| \\", "[ |  "];
+    } else {
+      // Just shield
+      return [" [ O  ", "[/|\\ ", "[ / \\ "];
+    }
+  } else if (hasWeapon) {
+    if (hasWeapon.weaponType === "bow") {
+      // Bow stance
+      return ["  O  ", " >|< ", " / \\ "];
+    } else if (hasWeapon.weaponType === "heavy") {
+      // Heavy weapon
+      return ["  O  ", " /|\\ ", " /|\\ "];
+    } else if (hasWeapon.weaponType === "sword") {
+      // Regular sword
+      return ["  O  ", " /|\\ ", " > \\ "];
+    } else if (hasWeapon.weaponType === "shortsword") {
+      // Short sword
+      return ["  O  ", " /|\\ ", " />\\ "];
+    }
+  }
+  
+  // Add armor indicator if wearing armor but not shield
+  if (hasArmor && hasArmor.type === "armor") {
+    return ["  O  ", "[||\\ ", " / \\ "];
+  }
+  
+  return playerASCII;
+}
+
+function drawASCII(text, x, y, color, fontSize = 12) {
   const area = areas[gameState.currentArea];
   const bgType = area.background || "forest";
-  const scrollOffset = gameState.combat.scrollX % 400;
+  
+  // Parallax layers - far background scrolls slower
+  const scrollOffsetFar = (gameState.combat.scrollX * 0.2) % 400; // Background layer moves at 20%
+  const scrollOffsetMid = (gameState.combat.scrollX * 0.5) % 400; // Middle layer at 50%
+  const scrollOffsetNear = gameState.combat.scrollX % 400;      // Foreground at 100%
   
   // Simple ASCII background patterns that repeat and scroll
-  const backgrounds = {
-    forest: ["▲", "▲▲", "▲", "▲▲"],
-    woods: ["🌲", "🌲", "🌲"],
-    mountain: ["⛰", "⛰", "⛰"],
-    river: ["≈≈≈", "≈≈≈", "≈≈≈"],
-    plains: ["~", "~", "~"],
-    cave: ["●●", "●●●", "●●"],
-    temple: ["◼◼", "◼◼", "◼◼"],
-    shadow: ["◆", "◆◆", "◆"],
-    tower: ["▮▮", "▮▮▮", "▮▮"],
-    sanctum: ["★", "★★", "★★★"]
+  const backgroundsLayers = {
+    forest: {
+      far: ["▲", "▲", "▲"],
+      mid: ["🌲", "🌲"],
+      near: ["▲▲", "▲", "▲▲"]
+    },
+    woods: {
+      far: ["🌲", "🌲", "🌲"],
+      mid: ["🌲", "🌲"],
+      near: ["🌲🌲", "🌲"]
+    },
+    mountain: {
+      far: ["⛰", "⛰"],
+      mid: ["⛰", "⛰"],
+      near: ["⛰⛰", "⛰"]
+    },
+    river: {
+      far: ["≈", "≈"],
+      mid: ["≈≈", "≈"],
+      near: ["≈≈≈", "≈≈"]
+    },
+    plains: {
+      far: ["~", "~"],
+      mid: ["~", "~"],
+      near: ["~~", "~"]
+    },
+    cave: {
+      far: ["●", "●"],
+      mid: ["●●", "●"],
+      near: ["●●●", "●●"]
+    },
+    temple: {
+      far: ["◼", "◼"],
+      mid: ["◼◼", "◼"],
+      near: ["◼◼◼", "◼◼"]
+    },
+    shadow: {
+      far: ["◆", "◆"],
+      mid: ["◆◆", "◆"],
+      near: ["◆◆◆", "◆"]
+    },
+    tower: {
+      far: ["▮", "▮"],
+      mid: ["▮▮", "▮"],
+      near: ["▮▮▮", "▮▮"]
+    },
+    sanctum: {
+      far: ["★", "★"],
+      mid: ["★★", "★"],
+      near: ["★★★", "★★"]
+    }
   };
   
-  const pattern = backgrounds[bgType] || backgrounds.forest;
+  const layers = backgroundsLayers[bgType] || backgroundsLayers.forest;
+  
+  // Draw far background layer (slowest, most faded)
+  ctx.fillStyle = "rgba(80, 80, 100, 0.15)";
+  ctx.font = "32px monospace";
+  for (let row = 0; row < 2; row++) {
+    let x = -scrollOffsetFar;
+    while (x < gameCanvas.width) {
+      const idx = row % layers.far.length;
+      ctx.fillText(layers.far[idx], x + 50, 20 + row * 80);
+      x += 120;
+    }
+  }
+  
+  // Draw mid background layer (medium speed, medium faded)
+  ctx.fillStyle = "rgba(100, 100, 120, 0.25)";
+  ctx.font = "28px monospace";
+  for (let row = 0; row < 2; row++) {
+    let x = -scrollOffsetMid;
+    while (x < gameCanvas.width) {
+      const idx = row % layers.mid.length;
+      ctx.fillText(layers.mid[idx], x + 50, 80 + row * 70);
+      x += 110;
+    }
+  }
+  
+  // Draw near foreground layer (fastest, most visible)
   ctx.fillStyle = "rgba(100, 100, 120, 0.3)";
   ctx.font = "24px monospace";
-  
-  // Draw scrolling background rows
-  for (let row = 0; row < 3; row++) {
-    let x = -scrollOffset;
+  for (let row = 0; row < 2; row++) {
+    let x = -scrollOffsetNear;
     while (x < gameCanvas.width) {
-      ctx.fillText(pattern[row % pattern.length], x + 50, 50 + row * 60);
+      const idx = row % layers.near.length;
+      ctx.fillText(layers.near[idx], x + 50, 140 + row * 60);
       x += 100;
     }
   }
@@ -1644,10 +1957,11 @@ function draw() {
   ctx.lineTo(gameCanvas.width, 350);
   ctx.stroke();
   
-  // Draw player ASCII art
+  // Draw player ASCII art with equipment
   const playerY = 300;
   const playerFontSize = 14;
-  drawASCII(playerASCII, gameState.combat.playerX, playerY, "#6ef", playerFontSize);
+  const playerASCIIToDraw = getPlayerASCIIWithEquipment();
+  drawASCII(playerASCIIToDraw, gameState.combat.playerX, playerY, "#6ef", playerFontSize);
   
   // Draw enemies
   gameState.combat.enemies.forEach(enemy => {
@@ -1728,6 +2042,22 @@ function draw() {
     }
   });
 
+  // Draw projectiles
+  if (gameState.combat.projectiles && gameState.combat.projectiles.length) {
+    gameState.combat.projectiles.forEach(proj => {
+      ctx.fillStyle = '#f8f';
+      ctx.globalAlpha = 0.9;
+      // Draw projectile as small rectangle with rotation
+      const angle = Math.atan2(proj.vy, proj.vx);
+      ctx.save();
+      ctx.translate(proj.x, proj.y);
+      ctx.rotate(angle);
+      ctx.fillRect(-8, -2, 16, 4);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    });
+  }
+
   // Draw floating texts (damage numbers, heals, notifications)
   if (gameState.combat.floatingTexts && gameState.combat.floatingTexts.length) {
     for (let i = gameState.combat.floatingTexts.length - 1; i >= 0; i--) {
@@ -1795,6 +2125,15 @@ function completeArea() {
   addToInventory(exclusiveItem.id, exclusiveItem, 1);
   addLog(`Received ${exclusiveItem.name} for clearing ${area.name}`);
   
+  // Unlock new material and gathering for this area
+  if (area.unlockedMaterial && area.unlockedMaterial !== "charcoal") {
+    const gatheringAction = gatheringActions.find(a => a.id === `gather${area.unlockedMaterial.charAt(0).toUpperCase() + area.unlockedMaterial.slice(1)}`);
+    if (gatheringAction && !gameState.unlockedIdleFeatures.includes(gatheringAction.unlock)) {
+      gameState.unlockedIdleFeatures.push(gatheringAction.unlock);
+      addLog(`Unlocked ${area.unlockedMaterial} gathering!`);
+    }
+  }
+  
   // Unlock next area after finishing map
   if (gameState.currentArea < areas.length - 1) {
     const nextAreaIndex = gameState.currentArea + 1;
@@ -1818,8 +2157,18 @@ function completeArea() {
     refreshStructuresMenu();
   }
   
+  // Also unlock unlockIdle if available
+  if (area.unlockIdle && !gameState.unlockedIdleFeatures.includes(area.unlockIdle)) {
+    gameState.unlockedIdleFeatures.push(area.unlockIdle);
+    addLog(`Unlocked ${area.unlockIdle}`);
+  }
+  
   refreshStats();
   refreshInventory();
+  refreshGatheringMenu();
+  refreshMagicMenu();
+  refreshCraftingMenu();
+  refreshStructuresMenu();
   showIdleMenu("gathering-menu");
   el("combat-section").classList.add("hidden");
   el("idle-section").classList.remove("hidden");
