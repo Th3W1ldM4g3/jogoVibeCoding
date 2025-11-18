@@ -1,0 +1,2303 @@
+// Game State
+const gameState = {
+  player: {
+    hp: 20,
+    maxHp: 20,
+    level: 1,
+    xp: 0,
+    attack: 2,
+    defense: 0,
+    xpToNext: 10
+  },
+  resources: {
+    wood: 0,
+    meat: 0,
+    water: 0,
+    plants: 0,
+    stone: 0,
+    hide: 0,
+    ritualStones: 0,
+    scrapMetal: 0,
+    crystal: 0,
+    bone: 0
+  },
+  capacity: {
+    current: 0,
+    max: 100 // expandable through items/structures
+  },
+  inventory: {},
+  equipped: {
+    weapon: null,
+    armor: null
+  },
+  unlockedAreas: [0], // Start with area 0
+  unlockedIdleFeatures: [],
+  currentArea: 0,
+  areaProgress: {},
+  gameTime: Date.now(),
+  settings: {
+    volume: 50,
+    autoSave: true
+  },
+  activeActions: {}, // Track active gathering actions
+  autoGenerators: {}, // Track auto-generation
+  passiveHealing: {
+    amount: 1, // HP restored per tick
+    interval: 5000, // milliseconds between healing ticks
+    structuresBuilt: [], // track structures that modified healing
+    intervalId: null
+  },
+  combat: {
+    active: false,
+    paused: false,
+    enemies: [],
+    playerX: 50,
+    scrollX: 0,
+    lastFrame: 0,
+    lastEnemyDamage: 0
+    , floatingTexts: [],
+    particles: []
+  }
+};
+
+// Game Data
+const areas = [
+  { name: "Forest Path", enemies: 5, boss: false, unlockIdle: null, unlockables: [], mapLength: 2000, spawnRate: 2000, background: "forest" },
+  { name: "Dark Woods", enemies: 8, boss: true, unlockIdle: "autoWood", unlockables: [], mapLength: 2200, spawnRate: 1800, background: "woods" },
+  { name: "Mountain Trail", enemies: 10, boss: false, unlockIdle: "stoneGathering", unlockables: [], mapLength: 2500, spawnRate: 2000, background: "mountain" },
+  { name: "River Crossing", enemies: 12, boss: false, unlockIdle: "waterGathering", unlockables: [], mapLength: 2600, spawnRate: 1800, background: "river" },
+  { name: "Plains", enemies: 15, boss: false, unlockIdle: "plantGathering", unlockables: ["boneGathering"], mapLength: 3000, spawnRate: 1600, background: "plains" },
+  { name: "Cave System", enemies: 18, boss: false, unlockIdle: "ritualStoneGathering", unlockables: ["ritualStoneGathering"], mapLength: 3200, spawnRate: 1700, background: "cave" },
+  { name: "Ancient Temple", enemies: 20, boss: true, unlockIdle: "advancedCrafting", unlockables: ["advancedCrafting"], mapLength: 3500, spawnRate: 1500, background: "temple" },
+  { name: "Shadow Realm", enemies: 25, boss: false, unlockIdle: null, unlockables: ["scrapGathering"], mapLength: 3800, spawnRate: 1400, background: "shadow" },
+  { name: "Magical Tower", enemies: 30, boss: false, unlockIdle: "powerfulUpgrades", unlockables: ["crystalGathering"], mapLength: 4200, spawnRate: 1300, background: "tower" },
+  { name: "Final Sanctum", enemies: 35, boss: true, unlockIdle: null, unlockables: [], mapLength: 5000, spawnRate: 1200, background: "sanctum" }
+];
+
+// ASCII Art for characters
+const playerASCII = [
+  "  O  ",
+  " /|\\ ",
+  " / \\ "
+];
+
+const enemyASCII = {
+  "Goblin": [
+    "  o  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Orc": [
+    "  O  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Shadow": [
+    "  ~  ",
+    " /~\\ ",
+    " / \\ "
+  ],
+  "Boss": [
+    "  ██  ",
+    " ████ ",
+    " █  █ ",
+    " ████ "
+  ]
+};
+
+// Simple ASCII art for items/recipes (used in inventory and crafting/shop)
+const itemAsciiArt = {
+  woodenSword: [` /\\ `, `/==\\`, ` || `],
+  stoneSword: [` /\\ `, `/##\\`, ` || `],
+  huntingSling: [` ( ) `, `/ | \\`, `  '  `],
+  spearThrower: [` /|\\`, ` / \\`, `  |  `],
+  crystalRecurve: [` <* > `, ` /|\\ `, `  |  `],
+  heavyClub: [`  __ `, ` /__\\`, `  || `],
+  throwingSpear: [` ->--`, `  |  `, `  ^  `],
+  metalMaul: [` [##] `, `  ||  `, `  ||  `],
+  woodenShield: [` [ ] `, ` | | `, `     `],
+  stoneShield: [` [#] `, ` |#| `, `     `],
+  metalShield: [` [M] `, ` |M| `, `     `],
+  leatherArmor: [` /\\ `, `|--|`, ` || `],
+  boneArmor: [` /\\ `, `|==|`, ` || `],
+  magicArmor: [` <M> `, `|MMM|`, ` || `],
+  healingPotion: [` ~~~ `, `(+ )`, ` ~~~ `],
+  strongHealingPotion: [` ~~~ `, `(++ )`, ` ~~~ `],
+  backpack: [` [B] `, `| B |`, `     `],
+  reinforcedBackpack: [` [R] `, `| R |`, `     `],
+  gatherRitualStones: [`  ▲  `, ` ▲▲ `, `  ▲  `],
+  wood: [`  /// `, ` /|\\ `, `  |  `],
+  meat: [`  ><> `, ` ( ) `, `  ~~ `],
+  water: [`  ~~~ `, ` ~~~ `, `  ~~~ `],
+  plants: [`  ,,, `, ` /|\\ `, `  |  `],
+  stone: [`  []  `, ` [ ] `, `     `],
+  hide: [` /\\ `, `| H |`, `     `],
+  ritualStones: [`  ▲  `, ` ▲▲ `, `  ▲  `],
+  scrapMetal: [`  ::: `, ` :M: `, `  ::: `],
+  crystal: [`  <>  `, ` <*> `, `  <>  `],
+  bone: [`  ||  `, ` /\\ `, `  ||  `],
+  default: [` [ ] `, `  ?  `, `     `]
+};
+
+// Friendly display names for resources (used in inventory/resource cards)
+const resourceDisplayNames = {
+  wood: 'Wood',
+  meat: 'Meat',
+  water: 'Water',
+  plants: 'Plants',
+  stone: 'Stone',
+  hide: 'Hide',
+  ritualStones: 'Ritual Stones',
+  scrapMetal: 'Scrap Metal',
+  crystal: 'Crystal',
+  bone: 'Bone'
+};
+
+function getAsciiForId(id, obj) {
+  if (!id) return itemAsciiArt.default;
+  if (itemAsciiArt[id]) return itemAsciiArt[id];
+  // Try to use type/weaponType heuristics
+  if (obj && obj.weaponType) {
+    if (obj.weaponType === 'bow') return [` )-->`, ` /|  `, `     `];
+    if (obj.weaponType === 'heavy') return [`  ## `, ` /|| `, `  || `];
+    if (obj.weaponType === 'shield') return [` [ ] `, ` | | `, `     `];
+  }
+  if (obj && obj.type === 'consumable') return [` ~~~ `, `( * )`, ` ~~~ `];
+  // Fallback: use initials
+  const name = (obj && obj.name) ? obj.name : id;
+  const initials = name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+  return [` [${initials}] `, `     `, `     `];
+}
+
+const enemyTypes = [
+  { name: "Goblin", hp: 10, attack: 1, defense: 0, xp: 2, width: 30, height: 40, ascii: enemyASCII["Goblin"] },
+  { name: "Orc", hp: 20, attack: 2, defense: 1, xp: 5, width: 35, height: 45, ascii: enemyASCII["Orc"] },
+  { name: "Shadow", hp: 15, attack: 3, defense: 0, xp: 4, width: 25, height: 35, ascii: enemyASCII["Shadow"] },
+  { name: "Boss", hp: 100, attack: 5, defense: 2, xp: 20, width: 50, height: 60, ascii: enemyASCII["Boss"] }
+];
+
+const gatheringActions = [
+  { id: "gatherWood", name: "Gather Wood", time: 5000, cost: {}, reward: { wood: 1 }, xp: 1 },
+  { id: "gatherMeat", name: "Hunt Meat", time: 8000, cost: {}, reward: { meat: 1 }, xp: 2 },
+  { id: "gatherWater", name: "Collect Water", time: 6000, cost: {}, reward: { water: 1 }, xp: 1, unlock: "waterGathering" },
+  { id: "gatherPlants", name: "Forage Plants", time: 7000, cost: {}, reward: { plants: 1 }, xp: 1, unlock: "plantGathering" },
+  { id: "gatherStone", name: "Mine Stone", time: 10000, cost: {}, reward: { stone: 1 }, xp: 2, unlock: "stoneGathering" },
+  { id: "gatherHide", name: "Skin Hide", time: 9000, cost: { meat: 1 }, reward: { hide: 1 }, xp: 2 },
+  { id: "gatherRitualStones", name: "Harvest Ritual Stones", time: 15000, cost: {}, reward: { ritualStones: 1 }, xp: 5, unlock: "ritualStoneGathering" },
+  { id: "gatherBone", name: "Collect Bones", time: 8000, cost: {}, reward: { bone: 1 }, xp: 1, unlock: "boneGathering" },
+  { id: "gatherCrystal", name: "Mine Crystals", time: 12000, cost: {}, reward: { crystal: 1 }, xp: 3, unlock: "crystalGathering" },
+  { id: "gatherScrapMetal", name: "Salvage Scrap Metal", time: 11000, cost: {}, reward: { scrapMetal: 1 }, xp: 2, unlock: "scrapGathering" }
+];
+
+const craftingRecipes = [
+  // Basic Weapons (speed: higher = faster DPS)
+  { id: "woodenSword", name: "Wooden Sword", cost: { wood: 5 }, type: "weapon", weaponType: "sword", stats: { attack: 2, speed: 1.0 }, description: "Basic melee weapon" },
+  { id: "stoneSword", name: "Stone Sword", cost: { wood: 3, stone: 5 }, type: "weapon", weaponType: "sword", stats: { attack: 4, speed: 0.95 }, description: "Reliable sword with stone edge" },
+  
+  // Bows (fast, ranged, lower damage)
+  { id: "huntingSling", name: "Hunting Sling", cost: { wood: 8, hide: 2 }, type: "weapon", weaponType: "bow", stats: { attack: 3, speed: 1.3, range: 220 }, description: "A simple sling for hunting small prey" },
+  { id: "spearThrower", name: "Spear Thrower", cost: { wood: 5, stone: 8, hide: 3 }, type: "weapon", weaponType: "bow", stats: { attack: 5, speed: 1.2, range: 320 }, description: "A device that increases thrown spear range and power" },
+  { id: "crystalRecurve", name: "Crystal Recurve", cost: { wood: 5, crystal: 5, hide: 4 }, type: "weapon", weaponType: "bow", stats: { attack: 7, speed: 1.4, range: 420 }, description: "A reinforced recurve with crystal limbs", unlock: "crystalGathering" },
+  
+  // Heavy Weapons (slow, high damage)
+  { id: "heavyClub", name: "Heavy Club", cost: { wood: 10, stone: 3 }, type: "weapon", weaponType: "heavy", stats: { attack: 6, speed: 0.7 }, description: "A blunt club designed to stagger foes" },
+  { id: "throwingSpear", name: "Throwing Spear", cost: { wood: 8, stone: 10, bone: 2 }, type: "weapon", weaponType: "heavy", stats: { attack: 9, speed: 0.6 }, description: "A heavy spear optimized for throwing", unlock: "boneGathering" },
+  { id: "metalMaul", name: "Metal Maul", cost: { scrapMetal: 8, stone: 5, wood: 6 }, type: "weapon", weaponType: "heavy", stats: { attack: 11, speed: 0.5 }, description: "A crushing metal maul", unlock: "scrapGathering" },
+  
+  // Shields (defense, can only pair with small weapons)
+  { id: "woodenShield", name: "Wooden Shield", cost: { wood: 12, hide: 2 }, type: "weapon", weaponType: "shield", stats: { defense: 3 }, description: "Basic protection shield" },
+  { id: "stoneShield", name: "Stone Shield", cost: { wood: 8, stone: 12, hide: 3 }, type: "weapon", weaponType: "shield", stats: { defense: 5 }, description: "Heavy stone shield for more protection" },
+  { id: "metalShield", name: "Metal Shield", cost: { scrapMetal: 10, stone: 8, hide: 4 }, type: "weapon", weaponType: "shield", stats: { defense: 7 }, description: "Reinforced metal shield blocks more damage", unlock: "scrapGathering" },
+  
+  // Armor
+  { id: "leatherArmor", name: "Leather Armor", cost: { hide: 5 }, type: "armor", stats: { defense: 2 }, description: "Light protective clothing" },
+  { id: "boneArmor", name: "Bone Armor", cost: { hide: 8, bone: 6 }, type: "armor", stats: { defense: 4 }, description: "Armor reinforced with bone plates", unlock: "boneGathering" },
+  { id: "magicArmor", name: "Magic Armor", cost: { hide: 5, ritualStones: 5, crystal: 3 }, type: "armor", stats: { defense: 5 }, description: "Enchanted armor with magical resilience", unlock: "advancedCrafting" },
+  
+  // Potions and Consumables
+  { id: "healingPotion", name: "Healing Potion", cost: { plants: 2, water: 1 }, type: "consumable", effect: { hp: 10 }, description: "Restores 10 HP" },
+  { id: "strongHealingPotion", name: "Strong Healing Potion", cost: { plants: 5, water: 3, crystal: 2 }, type: "consumable", effect: { hp: 25 }, description: "Restores 25 HP, made with crystals", unlock: "crystalGathering" },
+  
+  // Capacity Upgrades (items)
+  { id: "backpack", name: "Backpack", cost: { wood: 8, hide: 5 }, type: "capacity", capacityBonus: 50, description: "Increases inventory capacity by 50" },
+  { id: "reinforcedBackpack", name: "Reinforced Backpack", cost: { hide: 10, stone: 8, scrapMetal: 3 }, type: "capacity", capacityBonus: 75, description: "Increases inventory capacity by 75", unlock: "scrapGathering" },
+  
+  // Magic Items
+  // magicSword removed - enchanting system will provide configurable enchantments
+];
+
+// Enchant effects available for items (applied via magic menu)
+const enchantEffects = [
+  { id: 'poison', name: 'Poison', description: 'Adds a chance to poison enemies for damage over time', apply: (item) => { item.effect = item.effect || {}; item.effect.poison = { dmg: 1.5, duration: 4 }; } },
+  { id: 'lifeSteal', name: 'Life Steal', description: 'Steals a portion of damage as HP', apply: (item) => { item.effect = item.effect || {}; item.effect.lifeSteal = { percent: 0.20 }; } },
+  { id: 'freeze', name: 'Freeze', description: 'Small chance to slow enemy movement for a short period', apply: (item) => { item.effect = item.effect || {}; item.effect.freeze = { chance: 0.15, duration: 1.8 }; } },
+  { id: 'extraDamage', name: 'Extra Damage', description: 'Flat damage bonus', apply: (item) => { item.stats = item.stats || {}; item.stats.attack = (item.stats.attack || 0) + 3; } },
+  { id: 'weaken', name: 'Weaken', description: 'Small chance to reduce enemy defense temporarily', apply: (item) => { item.effect = item.effect || {}; item.effect.weaken = { chance: 0.20, defenseReduction: 2, duration: 3 }; } },
+  { id: 'bleed', name: 'Bleed', description: 'Chance to cause bleeding for DOT', apply: (item) => { item.effect = item.effect || {}; item.effect.bleed = { dmg: 2.5, duration: 4 }; } }
+];
+
+// Visuals for enchants: icon and color for display
+const enchantIcons = {
+  poison: { icon: '☠', color: '#a6e' },
+  lifeSteal: { icon: '❤', color: '#8f8' },
+  freeze: { icon: '❄', color: '#6ef' },
+  extraDamage: { icon: '✦', color: '#ffd700' },
+  weaken: { icon: '↓', color: '#ffc' },
+  bleed: { icon: '✸', color: '#f88' }
+};
+
+function getEnchantIconHtml(item) {
+  if (!item || !item.enchants) return '';
+  return item.enchants.map(eName => {
+    const key = Object.keys(enchantIcons).find(k => enchantEffects.find(e => e.name === eName && e.id === k) || k === eName || enchantEffects.find(e=>e.name===eName && e.id===k));
+    // best-effort: try to match by id or name
+    const iconObj = enchantIcons[key] || Object.values(enchantIcons)[0];
+    return `<span class="enchant-badge" title="${eName}" style="background:${iconObj.color};">${iconObj.icon}</span>`;
+  }).join('');
+}
+
+const structures = [
+  // Resource generation structures
+  { id: "woodHut", name: "Wood Hut", cost: { wood: 25 }, effect: "autoWood", rate: 5000, resource: "wood", amount: 0.5, unlock: "autoWood" },
+  { id: "huntingLodge", name: "Hunting Lodge", cost: { meat: 15 }, effect: "autoMeat", rate: 8000, resource: "meat", amount: 0.5 },
+  { id: "waterWell", name: "Water Well", cost: { water: 20 }, effect: "autoWater", rate: 6000, resource: "water", amount: 0.5, unlock: "waterGathering" },
+  { id: "garden", name: "Garden", cost: { plants: 10 }, effect: "autoPlants", rate: 7000, resource: "plants", amount: 0.5, unlock: "plantGathering" },
+  { id: "quarry", name: "Quarry", cost: { stone: 15 }, effect: "autoStone", rate: 10000, resource: "stone", amount: 0.5, unlock: "stoneGathering" },
+  { id: "ritualAltar", name: "Ritual Altar", cost: { ritualStones: 3, stone: 10 }, effect: "autoRitualStones", rate: 15000, resource: "ritualStones", amount: 0.5, unlock: "ritualStoneGathering" },
+  
+  // Early-game healing structures
+  { id: "dwelling", name: "Dwelling", cost: { wood: 5, stone: 2 }, effect: "healing", healAmount: 0.5, healInterval: 8000, unlock: null },
+  { id: "herbGarden", name: "Herb Garden", cost: { plants: 8, water: 3 }, effect: "healing", healAmount: 1, healInterval: 6000, unlock: "plantGathering" },
+  { id: "meditationCircle", name: "Meditation Circle", cost: { stone: 8, plants: 5 }, effect: "healing", healAmount: 0.75, healInterval: 4000, unlock: null },
+  
+  // Late-game healing structure
+  { id: "healingShrine", name: "Healing Shrine", cost: { ritualStones: 5, stone: 15 }, effect: "healing", healAmount: 2, healInterval: 3000, unlock: "ritualStoneGathering" }
+];
+
+// Helper Functions
+// Safe element getter: returns the element if found, otherwise returns a lightweight stub
+const el = id => {
+  const e = document.getElementById(id);
+  if (e) return e;
+  // Lightweight stub to avoid long chains of null checks during startup
+  return {
+    addEventListener: () => {},
+    classList: { add: () => {}, remove: () => {}, contains: () => false },
+    set textContent(v) {},
+    get textContent() { return ''; },
+    get value() { return ''; },
+    style: {},
+    appendChild: () => {},
+    innerHTML: '',
+    scrollTop: 0,
+    offsetHeight: 0
+  };
+};
+
+function addLog(text) {
+  const logEl = el("event-log");
+  if (logEl) {
+    const time = new Date().toLocaleTimeString();
+    const newText = `[${time}] ${text}`;
+    // Prepend new message
+    logEl.textContent = newText + '\n' + logEl.textContent;
+    
+    // Limit to 50 lines
+    const lines = logEl.textContent.split('\n');
+    if (lines.length > 50) {
+      logEl.textContent = lines.slice(0, 50).join('\n');
+    }
+    
+    // Scroll to top to show latest message
+    logEl.scrollTop = 0;
+    
+    // Force a reflow to ensure the log updates
+    logEl.offsetHeight;
+  }
+}
+
+function refreshStats() {
+  el("hp-display").textContent = `${Math.floor(gameState.player.hp)} / ${gameState.player.maxHp}`;
+  el("level-display").textContent = gameState.player.level;
+  el("attack-display").textContent = gameState.player.attack + (gameState.equipped.weapon ? gameState.equipped.weapon.stats.attack : 0);
+  el("defense-display").textContent = gameState.player.defense + (gameState.equipped.armor ? gameState.equipped.armor.stats.defense : 0);
+  
+  // Removed resource displays from main HUD - they show in context where needed
+  el("xp-display").textContent = `${gameState.player.xp} / ${gameState.player.xpToNext}`;
+}
+
+function canAfford(cost) {
+  for (const [resource, amount] of Object.entries(cost)) {
+    if (gameState.resources[resource] < amount) return false;
+  }
+  return true;
+}
+
+function payCost(cost) {
+  for (const [resource, amount] of Object.entries(cost)) {
+    gameState.resources[resource] -= amount;
+  }
+}
+
+function addResource(resource, amount) {
+  if (gameState.resources[resource] !== undefined) {
+    gameState.resources[resource] += amount;
+  }
+}
+
+function addXP(amount) {
+  gameState.player.xp += amount;
+  while (gameState.player.xp >= gameState.player.xpToNext) {
+    gameState.player.xp -= gameState.player.xpToNext;
+    gameState.player.level++;
+    gameState.player.xpToNext = Math.floor(gameState.player.xpToNext * 1.5);
+    gameState.player.maxHp += 5;
+    gameState.player.hp = gameState.player.maxHp;
+    gameState.player.attack += 1;
+    addLog(`Level up! Now level ${gameState.player.level}`);
+  }
+}
+
+function addToInventory(itemId, item, qty = 1) {
+  if (!gameState.inventory[itemId]) {
+    gameState.inventory[itemId] = { obj: item, qty: 0 };
+  }
+  gameState.inventory[itemId].qty += qty;
+}
+
+function removeFromInventory(itemId, qty = 1) {
+  if (!gameState.inventory[itemId] || gameState.inventory[itemId].qty < qty) return false;
+  gameState.inventory[itemId].qty -= qty;
+  if (gameState.inventory[itemId].qty <= 0) {
+    delete gameState.inventory[itemId];
+  }
+  return true;
+}
+
+// Menu System
+function showScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  el(screenId).classList.remove('hidden');
+}
+
+// Idle Section
+function showIdleMenu(menuId) {
+  document.querySelectorAll('.menu-content').forEach(m => m.classList.add('hidden'));
+  el(menuId).classList.remove('hidden');
+}
+
+function refreshGatheringMenu() {
+  const container = el("gathering-actions");
+  container.innerHTML = "";
+  // Reserve space at top of each action so the progress bar appears above and pushes buttons down.
+
+  gatheringActions.forEach(action => {
+    if (action.unlock && !gameState.unlockedIdleFeatures.includes(action.unlock)) return;
+
+    const item = document.createElement("div");
+    item.className = "action-item";
+
+    const isActive = !!gameState.activeActions[action.id];
+    const isAuto = !!gameState.autoGenerators[action.id];
+
+    // Calculate current progress if active
+    let progressWidth = "0%";
+    let progressText = "0%";
+    if (isActive) {
+      const elapsed = Date.now() - gameState.activeActions[action.id].startTime;
+      const progress = Math.min(100, (elapsed / action.time) * 100);
+      progressWidth = `${progress}%`;
+      progressText = `${Math.floor(progress)}%`;
+    }
+
+  // Reserve a fixed area for progress bar so content stays in the same place; bar overlays that area
+  const overlayBar = isActive ? `<div class="progress-bar"><div class="progress-bar-inner" id="progress-${action.id}" style="width:${progressWidth}"></div><div class="progress-text" id="progress-text-${action.id}">${progressText}</div></div>` : '';
+  const progressPlaceholder = `<div class="progress-placeholder">${overlayBar}</div>`;
+
+    const costDisplay = Object.entries(action.cost).map(([r, a]) => `${a} ${resourceDisplayNames[r] || r}`).join(", ") || "Free";
+    const rewardDisplay = Object.entries(action.reward).map(([r, a]) => `${a} ${resourceDisplayNames[r] || r}`).join(", ");
+
+    item.innerHTML = `
+      <div class="action-item-header">
+        <div class="action-item-name">${action.name}</div>
+        <div class="action-item-cost">${costDisplay}</div>
+      </div>
+      <div class="action-item-description">Time: ${action.time / 1000}s | Reward: ${rewardDisplay} | XP: ${action.xp}</div>
+      ${progressPlaceholder}
+      ${isAuto ? `<div class="auto-active">Auto-generating</div>` : ""}
+      <div class="action-controls">
+        <button class="btn action-btn" id="action-${action.id}" ${isActive ? "disabled" : ""}>
+          ${isActive ? "In Progress..." : "Start"}
+        </button>
+      </div>
+    `;
+
+    container.appendChild(item);
+
+    const btn = el(`action-${action.id}`);
+    if (btn && !isActive) {
+      btn.addEventListener("click", () => startGatheringAction(action));
+    }
+  });
+}
+
+function startGatheringAction(action) {
+  // Allow multiple concurrent gathering actions. Use timestamped jobs so they complete even if the tab
+  // is inactive (we compute completion based on Date.now()).
+  if (gameState.activeActions[action.id]) return;
+  if (!canAfford(action.cost)) {
+    addLog(`Cannot afford ${action.name}`);
+    return;
+  }
+
+  payCost(action.cost);
+  gameState.activeActions[action.id] = {
+    startTime: Date.now(),
+    duration: action.time,
+    interval: null
+  };
+
+  // Refresh menu first to show progress bar
+  refreshGatheringMenu();
+
+  // Start a UI interval to update the progress bar while this tab is active.
+  setupGatheringUIInterval(action.id);
+
+  // Persist activeActions in save (so jobs survive save/load cycles while keeping intervals transient)
+  try { saveGame(); } catch (e) {}
+
+  addLog(`Started ${action.name}`);
+}
+
+// Create a UI interval for a gathering job (does not affect the timing/completion logic)
+function setupGatheringUIInterval(actionId) {
+  const action = gatheringActions.find(a => a.id === actionId);
+  if (!action || !gameState.activeActions[actionId]) return;
+  // Clear any existing interval
+  if (gameState.activeActions[actionId].interval) {
+    clearInterval(gameState.activeActions[actionId].interval);
+  }
+  const interval = setInterval(() => {
+    const job = gameState.activeActions[actionId];
+    if (!job) { clearInterval(interval); return; }
+    const progressBar = el(`progress-${actionId}`);
+    const progressText = el(`progress-text-${actionId}`);
+    const elapsed = Date.now() - job.startTime;
+    const progress = Math.min(100, (elapsed / job.duration) * 100);
+    if (progressBar) progressBar.style.width = `${progress}%`;
+    if (progressText) progressText.textContent = `${Math.floor(progress)}%`;
+    // If completed (compute based on timestamps) - finalize
+    if (elapsed >= job.duration) {
+      clearInterval(interval);
+      if (gameState.activeActions[actionId]) gameState.activeActions[actionId].interval = null;
+      completeGatheringAction(action);
+    }
+  }, 100);
+  gameState.activeActions[actionId].interval = interval;
+}
+
+function completeGatheringAction(action) {
+  // Guard to avoid double-completing the same job if called multiple times
+  const job = gameState.activeActions[action.id];
+  if (!job) return; // already completed
+
+  // Clear UI interval if it exists
+  if (job.interval) {
+    try { clearInterval(job.interval); } catch (e) {}
+  }
+
+  // Remove the job record before awarding so subsequent callers see it as completed
+  delete gameState.activeActions[action.id];
+
+  // Award rewards and XP
+  for (const [resource, amount] of Object.entries(action.reward)) {
+    addResource(resource, amount);
+  }
+
+  addXP(action.xp);
+  addLog(`Completed ${action.name}`);
+  refreshStats();
+  refreshGatheringMenu();
+  try { saveGame(); } catch (e) {}
+}
+
+// Process timestamped gathering jobs (finalize any jobs whose end time has passed).
+function processGatheringJobs() {
+  const now = Date.now();
+  const toComplete = [];
+  for (const [jobId, job] of Object.entries(gameState.activeActions || {})) {
+    if (!job || !job.startTime || !job.duration) continue;
+    if (now >= job.startTime + job.duration) toComplete.push(jobId);
+  }
+  toComplete.forEach(id => {
+    const action = gatheringActions.find(a => a.id === id);
+    if (action) {
+      // Ensure any UI interval is cleared inside completeGatheringAction
+      completeGatheringAction(action);
+    } else {
+      // Unknown action - just remove
+      if (gameState.activeActions[id] && gameState.activeActions[id].interval) {
+        clearInterval(gameState.activeActions[id].interval);
+      }
+      delete gameState.activeActions[id];
+    }
+  });
+}
+
+function refreshMagicMenu() {
+  const container = el("magic-actions");
+  container.innerHTML = "";
+
+  // Ritual stone gathering (same as before, with reserved progress placeholder)
+  const magicAction = gatheringActions.find(a => a.id === "gatherRitualStones");
+  if (magicAction && (!magicAction.unlock || gameState.unlockedIdleFeatures.includes(magicAction.unlock))) {
+    const isActive = !!gameState.activeActions[magicAction.id];
+    const isAuto = !!gameState.autoGenerators[magicAction.id];
+    let progressWidth = "0%";
+    let progressText = "0%";
+    if (isActive) {
+      const elapsed = Date.now() - gameState.activeActions[magicAction.id].startTime;
+      const progress = Math.min(100, (elapsed / magicAction.time) * 100);
+      progressWidth = `${progress}%`;
+      progressText = `${Math.floor(progress)}%`;
+    }
+    const costDisplay = Object.entries(magicAction.cost).map(([r, a]) => `${a} ${resourceDisplayNames[r] || r}`).join(", ") || "Free";
+    const rewardDisplay = Object.entries(magicAction.reward).map(([r, a]) => `${a} ${resourceDisplayNames[r] || r}`).join(", ");
+    const overlayBar = isActive ? `<div class="progress-bar"><div class="progress-bar-inner" id="progress-${magicAction.id}" style="width:${progressWidth}"></div><div class="progress-text" id="progress-text-${magicAction.id}">${progressText}</div></div>` : '';
+    container.innerHTML += `
+      <div class="action-item">
+        <div class="action-item-header">
+          <div class="action-item-name">${magicAction.name}</div>
+          <div class="action-item-cost">${costDisplay}</div>
+        </div>
+        <div class="action-item-description">Time: ${magicAction.time / 1000}s | Reward: ${rewardDisplay} | XP: ${magicAction.xp}</div>
+        <div class="progress-placeholder">${overlayBar}</div>
+        ${isAuto ? `<div class="auto-active">Auto-generating</div>` : ""}
+        <div class="action-controls"><button class="btn action-btn" id="action-${magicAction.id}" ${isActive ? "disabled" : ""}>${isActive ? "In Progress..." : "Start"}</button></div>
+      </div>
+    `;
+    const btn = el(`action-${magicAction.id}`);
+    if (btn && !isActive) btn.addEventListener('click', () => startGatheringAction(magicAction));
+  } else {
+    container.innerHTML = "<div class='small'>Ritual Stone gathering not yet unlocked. Defeat the Cave System boss.</div>";
+  }
+
+  // Enchanting section: allow enchanting of weapons/armor using ritualStones
+  const enchantSection = document.createElement('div');
+  enchantSection.className = 'enchant-section';
+  enchantSection.innerHTML = '<h3>Enchanting</h3><div class="small">Use Ritual Stones to enchant weapons or armor. Each enchant costs 3 ritual stones. You can also change an existing enchant for the same cost.</div><div id="enchant-list" class="enchant-list"></div>';
+  container.appendChild(enchantSection);
+
+  const listEl = el('enchant-list');
+  // Find eligible items in inventory (weapons and armor)
+  Object.entries(gameState.inventory).forEach(([itemId, itemData]) => {
+    if (itemData.obj.type !== 'weapon' && itemData.obj.type !== 'armor') return;
+    const card = document.createElement('div');
+    card.className = 'enchant-card';
+    const enchants = itemData.obj.effect ? Object.keys(itemData.obj.effect || {}).join(', ') : 'None';
+    const cost = 3;
+    const ritualAmt = gameState.resources.ritualStones || 0;
+    const canAfford = ritualAmt >= cost;
+    const hasHistory = (itemData.obj._enchantHistory && itemData.obj._enchantHistory.length > 0);
+    card.innerHTML = `
+      <div>
+        <div class="enchant-item-name">${itemData.obj.name} (x${itemData.qty})</div>
+        <div class="small">Current Enchants: ${enchants}</div>
+      </div>
+      <div class="enchant-actions">
+        <button class="btn enchant-btn" id="enchant-${itemId}" ${!canAfford ? 'disabled' : ''}>Enchant (3 ritual stones)</button>
+        <button class="btn enchant-change" id="enchant-change-${itemId}" ${(!canAfford || !hasHistory) ? 'disabled' : ''}>Change Last Enchant (3 ritual stones)</button>
+      </div>
+    `;
+    listEl.appendChild(card);
+
+    const btn = el(`enchant-${itemId}`);
+    if (btn) btn.addEventListener('click', () => {
+      if (!canAfford) return;
+      showConfirm(`Spend ${cost} ritual stones to enchant ${itemData.obj.name}?`, () => enchantItem(itemId, false));
+    });
+    const btn2 = el(`enchant-change-${itemId}`);
+    if (btn2) btn2.addEventListener('click', () => {
+      if (!canAfford || !hasHistory) return;
+      showConfirm(`Spend ${cost} ritual stones to change the last enchant on ${itemData.obj.name}?`, () => enchantItem(itemId, true));
+    });
+  });
+}
+
+function refreshCraftingMenu() {
+  const container = el("crafting-recipes");
+  container.innerHTML = "";
+  // Group recipes into labeled categories and render grids to reduce clutter
+  const categories = {
+    swords: { title: 'Swords', filter: r => r.type === 'weapon' && r.weaponType === 'sword' },
+    bows: { title: 'Ranged', filter: r => r.type === 'weapon' && r.weaponType === 'bow' },
+    heavy: { title: 'Heavy Weapons', filter: r => r.type === 'weapon' && r.weaponType === 'heavy' },
+    shields: { title: 'Shields', filter: r => r.type === 'weapon' && r.weaponType === 'shield' },
+    armor: { title: 'Armor', filter: r => r.type === 'armor' },
+    consumables: { title: 'Consumables', filter: r => r.type === 'consumable' },
+    capacity: { title: 'Capacity', filter: r => r.type === 'capacity' }
+  };
+
+  for (const key of Object.keys(categories)) {
+    const cat = categories[key];
+    const list = craftingRecipes.filter(r => (!r.unlock || gameState.unlockedIdleFeatures.includes(r.unlock)) && cat.filter(r));
+    // Sort recipes alphabetically by name for consistent ordering
+    list.sort((a, b) => a.name.localeCompare(b.name));
+    if (!list.length) continue;
+
+    const section = document.createElement('div');
+    section.className = 'recipe-section';
+    section.innerHTML = `<h3>${cat.title}</h3><div class="recipe-grid" id="recipe-grid-${key}"></div>`;
+    container.appendChild(section);
+
+    const grid = el(`recipe-grid-${key}`);
+    list.forEach(recipe => {
+      const card = document.createElement('div');
+      card.className = 'recipe-card';
+
+      const canCraft = canAfford(recipe.cost);
+      const resourceDisplay = Object.entries(recipe.cost).map(([r, a]) => {
+        const current = gameState.resources[r] || 0;
+        const name = resourceDisplayNames[r] || r;
+        return `<span class="${current >= a ? 'have-resource' : 'lack-resource'}">${current >= a ? '✓' : '✗'} ${a} ${name} (${Math.floor(current)})</span>`;
+      }).join('<br>');
+
+      card.innerHTML = `
+        <div class="recipe-card-inner">
+          <pre class="ascii-art">${getAsciiForId(recipe.id, recipe).join('\n')}</pre>
+          <div class="recipe-name">${recipe.name}</div>
+          ${recipe.description ? `<div class="small recipe-desc">${recipe.description}</div>` : ''}
+          <div class="recipe-cost">${resourceDisplay}</div>
+          ${(() => {
+            // If player already owns this crafted item, show its enchants (if any)
+            const inv = gameState.inventory && gameState.inventory[recipe.id];
+            if (inv && inv.obj) {
+              const ench = inv.obj.enchants && inv.obj.enchants.length ? inv.obj.enchants.join(', ') : 'None';
+              const enchBadges = getEnchantIconHtml(inv.obj);
+              return `<div class="small">Owned: x${inv.qty} ${enchBadges ? `<div class="enchant-icons">${enchBadges}</div>` : ''} | Enchants: ${ench}</div>`;
+            }
+            return '';
+          })()}
+          ${recipe.stats ? `<div class="small">Stats: ${Object.entries(recipe.stats).map(([s, v]) => `${s} ${v}`).join(', ')}</div>` : ''}
+          ${recipe.capacityBonus ? `<div class="small">Capacity: +${recipe.capacityBonus}</div>` : ''}
+          <div class="recipe-actions"><button class="btn recipe-btn ${!canCraft ? 'disabled' : ''}" id="craft-${recipe.id}" ${!canCraft ? 'disabled' : ''}>Craft</button></div>
+        </div>
+      `;
+
+      grid.appendChild(card);
+
+      const btn = card.querySelector(`#craft-${recipe.id}`);
+      if (btn && canCraft) btn.addEventListener('click', () => craftItem(recipe));
+    });
+  }
+}
+
+function craftItem(recipe) {
+  if (!canAfford(recipe.cost)) {
+    addLog(`Cannot afford ${recipe.name}`);
+    return;
+  }
+  
+  payCost(recipe.cost);
+  
+  // Handle capacity items
+  if (recipe.type === "capacity") {
+    gameState.capacity.max += recipe.capacityBonus;
+    addLog(`Crafted ${recipe.name} - Capacity increased to ${gameState.capacity.max}`);
+  } else {
+    // Handle regular items (weapons, armor, consumables)
+    const item = {
+      id: recipe.id,
+      name: recipe.name,
+      type: recipe.type,
+      weaponType: recipe.weaponType || null,
+      stats: recipe.stats || {},
+      effect: recipe.effect || {}
+    };
+    
+    addToInventory(recipe.id, item, 1);
+    addLog(`Crafted ${recipe.name}`);
+  }
+  
+  refreshStats();
+  refreshCraftingMenu();
+  refreshInventory();
+}
+
+// Enchanting mechanics: apply a random enchant to an inventory weapon/armor using ritualStones
+function enchantItem(itemId, replaceLast = false) {
+  const cost = 3;
+  if ((gameState.resources.ritualStones || 0) < cost) {
+    addLog('Not enough Ritual Stones to enchant.');
+    return;
+  }
+  const invEntry = gameState.inventory[itemId];
+  if (!invEntry) {
+    addLog('Item not found in inventory');
+    return;
+  }
+  const item = invEntry.obj;
+
+  // If replaceLast is true and there's history, revert last enchant snapshot
+  item._enchantHistory = item._enchantHistory || [];
+  if (replaceLast && item._enchantHistory.length) {
+    const last = item._enchantHistory.pop();
+    // restore previous stats/effect
+    item.stats = last.prevStats || {};
+    item.effect = last.prevEffect || {};
+  }
+
+  // Pay cost
+  gameState.resources.ritualStones -= cost;
+
+  // Pick a random enchant effect
+  const choice = enchantEffects[Math.floor(Math.random() * enchantEffects.length)];
+  // Save snapshot of current stats/effect so we can revert later
+  const snapshot = { prevStats: JSON.parse(JSON.stringify(item.stats || {})), prevEffect: JSON.parse(JSON.stringify(item.effect || {})), id: choice.id };
+  item._enchantHistory.push(snapshot);
+
+  // Apply effect (mutates item)
+  try {
+    choice.apply(item);
+    // mark applied enchant list for display
+    item.enchants = item.enchants || [];
+    item.enchants.push(choice.name);
+    addLog(`Applied enchant '${choice.name}' to ${item.name}`);
+    // show a small floating confirmation near player
+    if (gameState.combat && gameState.combat.floatingTexts) {
+      gameState.combat.floatingTexts.push({ x: gameState.combat.playerX + 10, y: 260, text: `Enchanted ${item.name}`, ttl: 1.6, alpha: 1 });
+    }
+  } catch (e) {
+    addLog('Error applying enchant');
+  }
+
+  refreshInventory();
+  refreshMagicMenu();
+  refreshCraftingMenu();
+  refreshStats();
+}
+
+function refreshStructuresMenu() {
+  const container = el("structures-options");
+  container.innerHTML = "";
+  
+  structures.forEach(structure => {
+    if (structure.unlock && !gameState.unlockedIdleFeatures.includes(structure.unlock)) return;
+    
+    const isBuilt = gameState.unlockedIdleFeatures.includes(structure.id);
+    const item = document.createElement("div");
+    item.className = "structure-item";
+    
+    if (isBuilt) {
+      // Already built - show production rate
+        if (structure.amount && structure.resource) {
+          const ratePerSecond = (structure.amount / (structure.rate / 1000)).toFixed(2);
+          item.innerHTML = `
+            <div class="structure-info">
+              <div class="structure-name">${structure.name}</div>
+              <div class="small" style="color: var(--success);">Built - Producing ${ratePerSecond} ${structure.resource}/sec</div>
+            </div>
+          `;
+        } else if (structure.effect === 'healing') {
+          item.innerHTML = `
+            <div class="structure-info">
+              <div class="structure-name">${structure.name}</div>
+              <div class="small" style="color: var(--success);">Built - Provides healing (+${structure.healAmount} HP every ${structure.healInterval / 1000}s)</div>
+            </div>
+          `;
+        } else {
+          item.innerHTML = `
+            <div class="structure-info">
+              <div class="structure-name">${structure.name}</div>
+              <div class="small" style="color: var(--success);">Built</div>
+            </div>
+          `;
+        }
+    } else {
+      // Not built - show build option
+      const canAffordStructure = canAfford(structure.cost);
+      let productionLine = '';
+      if (structure.amount && structure.resource) {
+        const ratePerSecond = (structure.amount / (structure.rate / 1000)).toFixed(2);
+        productionLine = `<div class="small">Production: ${ratePerSecond} ${structure.resource}/second</div>`;
+      } else if (structure.effect === 'healing') {
+        productionLine = `<div class="small">Provides healing: +${structure.healAmount} HP every ${structure.healInterval / 1000}s</div>`;
+      }
+
+      item.innerHTML = `
+          <div class="structure-info">
+            <div class="structure-name">${structure.name}</div>
+            <div class="structure-cost">Cost: ${Object.entries(structure.cost).map(([r, a]) => `${a} ${resourceDisplayNames[r] || r}`).join(", ")}</div>
+            ${productionLine}
+          </div>
+          <button class="btn structure-btn" id="structure-${structure.id}" ${!canAffordStructure ? "disabled" : ""}>
+            Build
+          </button>
+        `;
+      
+      const btn = el(`structure-${structure.id}`);
+      if (btn && canAffordStructure) {
+        btn.addEventListener("click", () => buildStructure(structure));
+      }
+    }
+    
+    container.appendChild(item);
+  });
+}
+
+function buildStructure(structure) {
+  if (!canAfford(structure.cost)) {
+    addLog(`Cannot afford ${structure.name}`);
+    return;
+  }
+  
+  payCost(structure.cost);
+  gameState.unlockedIdleFeatures.push(structure.id);
+  
+  // Start auto-generation based on structure
+  const actionId = structure.effect.replace("auto", "gather");
+  const actionIdCapitalized = actionId.charAt(0).toLowerCase() + actionId.slice(1);
+  
+  // Map structure effects to action IDs
+  const actionMap = {
+    "autoWood": "gatherWood",
+    "autoMeat": "gatherMeat",
+    "autoWater": "gatherWater",
+    "autoPlants": "gatherPlants",
+    "autoStone": "gatherStone",
+    "autoRitualStones": "gatherRitualStones"
+  };
+  
+  const mappedActionId = actionMap[structure.effect];
+  if (mappedActionId) {
+    gameState.autoGenerators[mappedActionId] = { 
+      rate: structure.rate,
+      resource: structure.resource,
+      amount: structure.amount
+    };
+    startAutoGenerator(mappedActionId, structure);
+  }
+
+  // Apply healing if the structure provides it
+  if (structure.effect === "healing") {
+    if (!gameState.passiveHealing) {
+      gameState.passiveHealing = { amount: 1, interval: 5000, structuresBuilt: [], intervalId: null };
+    }
+    // Increase heal amount
+    if (structure.healAmount) {
+      gameState.passiveHealing.amount += structure.healAmount;
+    }
+    // Use the fastest interval among all built healing structures (stack for faster healing)
+    if (structure.healInterval) {
+      gameState.passiveHealing.interval = Math.min(gameState.passiveHealing.interval, structure.healInterval);
+    }
+    if (!gameState.passiveHealing.structuresBuilt.includes(structure.id)) {
+      gameState.passiveHealing.structuresBuilt.push(structure.id);
+    }
+    // Restart passive healing so it uses updated interval/amount
+    stopPassiveHealing();
+    startPassiveHealing();
+  }
+  
+  // Log for resource generation structures
+  if (structure.effect !== "healing" && structure.rate) {
+    addLog(`Built ${structure.name} - Now producing ${structure.amount} ${structure.resource} every ${structure.rate / 1000}s`);
+  } else if (structure.effect === "healing") {
+    addLog(`Built ${structure.name} - Healing increased (+${structure.healAmount} HP every ${structure.healInterval / 1000}s)`);
+  }
+  refreshStats();
+  refreshStructuresMenu();
+  refreshGatheringMenu();
+}
+
+function startAutoGenerator(actionId, structure = null) {
+  const action = gatheringActions.find(a => a.id === actionId);
+  if (!action) return;
+  
+  const generator = gameState.autoGenerators[actionId];
+  if (!generator) return;
+  
+  // If already running, don't start another interval
+  if (generator.interval) return;
+  
+  const interval = setInterval(() => {
+    if (!gameState.autoGenerators[actionId]) {
+      clearInterval(interval);
+      return;
+    }
+    
+    // Use structure data if available, otherwise use action reward
+    if (structure && generator.resource && generator.amount) {
+      addResource(generator.resource, generator.amount);
+      addXP(action.xp);
+    } else {
+      for (const [resource, amount] of Object.entries(action.reward)) {
+        addResource(resource, amount);
+      }
+      addXP(action.xp);
+    }
+    refreshStats();
+  }, generator.rate);
+  
+  generator.interval = interval;
+}
+
+// Passive healing system (heals the player over time; can be improved by structures)
+function startPassiveHealing() {
+  const ph = gameState.passiveHealing;
+  if (!ph) return;
+  if (ph.intervalId) return; // already running
+
+  ph.intervalId = setInterval(() => {
+    if (!gameState || !gameState.player) return;
+    if (gameState.player.hp <= 0) {
+      // allow revival from 0
+      gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + ph.amount);
+    } else if (gameState.player.hp < gameState.player.maxHp) {
+      gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + ph.amount);
+    }
+    refreshStats();
+  }, ph.interval);
+}
+
+function stopPassiveHealing() {
+  const ph = gameState.passiveHealing;
+  if (!ph || !ph.intervalId) return;
+  clearInterval(ph.intervalId);
+  ph.intervalId = null;
+}
+
+// Inventory
+function refreshInventory() {
+  const container = el("inventory-grid");
+  container.innerHTML = "";
+
+  // Materials section: show current materials/resources as cards similar to crafting
+  const materialsList = Object.entries(gameState.resources).map(([r, a]) => {
+    const art = getAsciiForId(r).join('\n');
+    const displayName = resourceDisplayNames[r] || r;
+    return {
+      id: r,
+      name: displayName,
+      art,
+      qty: Math.floor(a)
+    };
+  }).filter(x => true);
+
+  if (materialsList.length) {
+    const section = document.createElement('div');
+    section.className = 'inventory-section';
+    section.innerHTML = `<h3>Materials</h3><div class="inventory-type-grid" id="inventory-materials"></div>`;
+    container.appendChild(section);
+    const matGrid = el('inventory-materials');
+    materialsList.forEach(m => {
+      const card = document.createElement('div');
+      card.className = 'inventory-card';
+      card.innerHTML = `<pre class="ascii-art ascii-small">${m.art}</pre><div class="inventory-name">${m.name}</div><div class="inventory-qty">x${m.qty}</div>`;
+      matGrid.appendChild(card);
+    });
+  }
+
+  // Group inventory items by type (weapons grouped by weaponType)
+  const grouped = {};
+  Object.entries(gameState.inventory).forEach(([itemId, itemData]) => {
+    const t = itemData.obj.type || 'misc';
+    if (!grouped[t]) grouped[t] = [];
+    grouped[t].push({ id: itemId, data: itemData });
+  });
+
+  // Sort each group alphabetically by item name for a tidy inventory
+  Object.keys(grouped).forEach(k => {
+    grouped[k].sort((a, b) => (a.data.obj.name || '').localeCompare(b.data.obj.name || ''));
+  });
+
+  // Weapons grouped by weaponType
+  if (grouped.weapon && grouped.weapon.length) {
+    const section = document.createElement('div');
+    section.className = 'inventory-section';
+    section.innerHTML = `<h3>Weapons</h3><div class="inventory-type-grid" id="inventory-weapons"></div>`;
+    container.appendChild(section);
+    const grid = el('inventory-weapons');
+    grouped.weapon.forEach(it => {
+      const itemCard = document.createElement('div');
+      itemCard.className = 'inventory-card';
+      const isEquipped = (gameState.equipped.weapon && gameState.equipped.weapon.id === it.id);
+      if (isEquipped) itemCard.classList.add('equipped');
+      const enchantBadges = getEnchantIconHtml(it.data.obj);
+      itemCard.innerHTML = `
+        <pre class="ascii-art">${getAsciiForId(it.id, it.data.obj).join('\n')}</pre>
+        <div class="inventory-name">${it.data.obj.name}</div>
+        <div class="inventory-qty">x${it.data.qty}</div>
+        ${enchantBadges ? `<div class="enchant-icons">${enchantBadges}</div>` : ''}
+        ${it.data.obj.stats ? `<div class="small">${Object.entries(it.data.obj.stats).map(([s,v])=>`${s} ${v}`).join(', ')}</div>` : ''}
+        ${it.data.obj.effect ? `<div class="small">Enchantments: ${(it.data.obj.effect && Object.keys(it.data.obj.effect).length) ? Object.keys(it.data.obj.effect).join(', ') : 'None'}</div>` : ''}
+      `;
+      itemCard.addEventListener('click', () => useInventoryItem(it.id, it.data.obj));
+      grid.appendChild(itemCard);
+    });
+  }
+
+  // Armor
+  if (grouped.armor && grouped.armor.length) {
+    const section = document.createElement('div');
+    section.className = 'inventory-section';
+    section.innerHTML = `<h3>Armor</h3><div class="inventory-type-grid" id="inventory-armor"></div>`;
+    container.appendChild(section);
+    const grid = el('inventory-armor');
+    grouped.armor.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'inventory-card';
+      const isEquipped = (gameState.equipped.armor && gameState.equipped.armor.id === it.id);
+      if (isEquipped) card.classList.add('equipped');
+      const enchantBadges = getEnchantIconHtml(it.data.obj);
+      card.innerHTML = `
+        <pre class="ascii-art">${getAsciiForId(it.id, it.data.obj).join('\n')}</pre>
+        <div class="inventory-name">${it.data.obj.name}</div>
+        <div class="inventory-qty">x${it.data.qty}</div>
+        ${enchantBadges ? `<div class="enchant-icons">${enchantBadges}</div>` : ''}
+        ${it.data.obj.stats ? `<div class="small">${Object.entries(it.data.obj.stats).map(([s,v])=>`${s} ${v}`).join(', ')}</div>` : ''}
+        ${it.data.obj.effect ? `<div class="small">Effects: ${(it.data.obj.effect && Object.keys(it.data.obj.effect).length) ? Object.keys(it.data.obj.effect).join(', ') : 'None'}</div>` : ''}
+      `;
+      card.addEventListener('click', () => useInventoryItem(it.id, it.data.obj));
+      grid.appendChild(card);
+    });
+  }
+
+  // Consumables
+  if (grouped.consumable && grouped.consumable.length) {
+    const section = document.createElement('div');
+    section.className = 'inventory-section';
+    section.innerHTML = `<h3>Consumables</h3><div class="inventory-type-grid" id="inventory-consumables"></div>`;
+    container.appendChild(section);
+    const grid = el('inventory-consumables');
+    grouped.consumable.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'inventory-card';
+  card.innerHTML = `<pre class="ascii-art">${getAsciiForId(it.id, it.data.obj).join('\n')}</pre><div class="inventory-name">${it.data.obj.name}</div><div class="inventory-qty">x${it.data.qty}</div>`;
+      card.addEventListener('click', () => useInventoryItem(it.id, it.data.obj));
+      grid.appendChild(card);
+    });
+  }
+
+  // Quest / misc
+  if ((grouped.quest && grouped.quest.length) || (grouped.misc && grouped.misc.length)) {
+    const list = (grouped.quest || []).concat(grouped.misc || []);
+    const section = document.createElement('div');
+    section.className = 'inventory-section';
+    section.innerHTML = `<h3>Misc</h3><div class="inventory-type-grid" id="inventory-misc"></div>`;
+    container.appendChild(section);
+    const grid = el('inventory-misc');
+    list.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'inventory-card';
+  card.innerHTML = `<pre class="ascii-art">${getAsciiForId(it.id, it.data.obj).join('\n')}</pre><div class="inventory-name">${it.data.obj.name}</div><div class="inventory-qty">x${it.data.qty}</div>`;
+      card.addEventListener('click', () => useInventoryItem(it.id, it.data.obj));
+      grid.appendChild(card);
+    });
+  }
+}
+
+function showAreaSelection() {
+  const overlay = el("area-selection-overlay");
+  const container = el("area-list");
+  container.innerHTML = "";
+  
+  gameState.unlockedAreas.forEach(areaIndex => {
+    const area = areas[areaIndex];
+    const item = document.createElement("div");
+    item.className = "action-item";
+    
+    item.innerHTML = `
+      <div class="action-item-header">
+        <div class="action-item-name">${area.name}</div>
+      </div>
+      <div class="action-item-description">
+        Enemies: ${area.enemies} | ${area.boss ? "Boss Area" : "Regular Area"}
+        ${area.unlockIdle ? ` | Unlocks: ${area.unlockIdle}` : ""}
+      </div>
+      <button class="btn action-btn" id="select-area-${areaIndex}">
+        Enter Area
+      </button>
+    `;
+    
+    container.appendChild(item);
+    
+    const btn = el(`select-area-${areaIndex}`);
+    if (btn) {
+      btn.addEventListener("click", () => {
+        gameState.currentArea = areaIndex;
+        overlay.classList.add("hidden");
+        el("idle-section").classList.add("hidden");
+        el("combat-section").classList.remove("hidden");
+        startRPG();
+      });
+    }
+  });
+  
+  overlay.classList.remove("hidden");
+}
+
+function useInventoryItem(itemId, item) {
+  if (item.type === "weapon") {
+    // Check weapon constraints
+    if (item.weaponType === "heavy" && gameState.equipped.armor && gameState.equipped.armor.weaponType === "shield") {
+      addLog(`Cannot equip heavy weapon with shield - shields only work with small weapons`);
+      return;
+    }
+    if (item.weaponType === "shield" && gameState.equipped.weapon && gameState.equipped.weapon.weaponType === "heavy") {
+      addLog(`Cannot equip shield with heavy weapon - shields only work with small weapons`);
+      return;
+    }
+    
+    gameState.equipped.weapon = item;
+    addLog(`Equipped ${item.name}`);
+    refreshStats();
+    refreshInventory();
+  } else if (item.type === "armor") {
+    gameState.equipped.armor = item;
+    addLog(`Equipped ${item.name}`);
+    refreshStats();
+    refreshInventory();
+  } else if (item.type === "consumable") {
+    if (item.effect.hp) {
+      gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + item.effect.hp);
+      removeFromInventory(itemId, 1);
+      addLog(`Used ${item.name} (+${item.effect.hp} HP)`);
+      refreshStats();
+      refreshInventory();
+    }
+  }
+}
+
+// RPG Combat Section
+let gameCanvas, ctx;
+let animationFrameId;
+
+function initRPG() {
+  gameCanvas = el("game-canvas");
+  ctx = gameCanvas.getContext("2d");
+}
+
+function startRPG() {
+  if (gameState.combat.active) return;
+  
+  gameState.combat.active = true;
+  gameState.combat.paused = false;
+  gameState.combat.enemies = [];
+  gameState.combat.playerX = 50; // Fixed screen position
+  gameState.combat.scrollX = 0;
+  gameState.combat.lastFrame = Date.now();
+  gameState.combat.lastEnemyDamage = 0;
+  gameState.combat.mapProgress = 0; // Track how far through the map
+  gameState.combat.spawnedEnemiesCount = 0; // Count of spawned enemies
+  gameState.combat.spawnIntervalId = null;
+  
+  const area = areas[gameState.currentArea];
+  el("area-name").textContent = area.name;
+  
+  // Spawn first enemy
+  spawnSingleEnemy();
+  
+  // Start enemy spawn timer
+  startEnemySpawner();
+  
+  // Start game loop
+  gameLoop();
+  
+  addLog(`Entered ${area.name} - Reach the end to victory!`);
+}
+
+function spawnSingleEnemy() {
+  const area = areas[gameState.currentArea];
+  const isBoss = area.boss && gameState.combat.spawnedEnemiesCount === area.enemies - 1;
+  const enemyType = isBoss ? enemyTypes[3] : enemyTypes[Math.floor(Math.random() * 3)];
+  
+  gameState.combat.enemies.push({
+    ...enemyType,
+    ascii: enemyType.ascii.slice(),
+    x: 800 + (gameState.combat.spawnedEnemiesCount * 250) + Math.random() * 100,
+    y: 300,
+    maxHp: enemyType.hp,
+    hp: enemyType.hp,
+    lastDamage: 0,
+    animFrame: 0,
+    effects: {} // active status effects (poison, bleed, freeze, weaken) mapped to timers/values
+  });
+  
+  gameState.combat.spawnedEnemiesCount++;
+  gameState.combat.enemies.sort((a, b) => a.x - b.x);
+}
+
+// Utility: show an in-game confirmation modal with callback
+function showConfirm(message, onYes) {
+  let modal = el('confirm-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'confirm-modal';
+    modal.className = 'confirm-modal hidden';
+    modal.innerHTML = `<div class="confirm-inner"><div id="confirm-msg"></div><div class="confirm-actions"><button id="confirm-yes" class="btn">Yes</button><button id="confirm-no" class="btn">No</button></div></div>`;
+    document.body.appendChild(modal);
+    el('confirm-no').addEventListener('click', () => { modal.classList.add('hidden'); });
+  }
+  el('confirm-msg').textContent = message;
+  modal.classList.remove('hidden');
+  const yesBtn = el('confirm-yes');
+  const noBtn = el('confirm-no');
+  const close = () => { modal.classList.add('hidden'); yesBtn.removeEventListener('click', handler); };
+  const handler = () => { close(); onYes && onYes(); };
+  yesBtn.addEventListener('click', handler);
+}
+
+// Simple combat simulator for balance testing
+function simulateCombat(numTrials = 10) {
+  let totalPlayerDamage = 0, totalEnemyDamage = 0, totalTime = 0;
+  
+  for (let trial = 0; trial < numTrials; trial++) {
+    const equipped = gameState.equipped.weapon;
+    const baseAttack = gameState.player.attack + (equipped ? (equipped.stats.attack || 0) : 0);
+    const speedMult = equipped ? (equipped.stats.speed || 1) : 1;
+    const playerDPS = Math.max(1, (baseAttack * speedMult));
+    
+    const enemy = { attack: 5, defense: 1, effects: {} };
+    let enemyHp = 50, playerHp = gameState.player.maxHp;
+    let combatTime = 0;
+    
+    while (enemyHp > 0 && playerHp > 0 && combatTime < 60) {
+      const deltaTime = 0.016;
+      
+      // Player attacks
+      const playerDamage = Math.max(1, playerDPS - enemy.defense);
+      enemyHp -= playerDamage * deltaTime;
+      
+      // Life steal
+      if (equipped && equipped.effect && equipped.effect.lifeSteal) {
+        const heal = playerDamage * (equipped.effect.lifeSteal.percent || 0) * deltaTime;
+        playerHp = Math.min(gameState.player.maxHp, playerHp + heal);
+      }
+      
+      // Enemy attacks (reduced if frozen)
+      let enemyAttack = enemy.attack;
+      if (enemy.effects.freeze) {
+        enemyAttack *= 0.5;
+      }
+      const enemyDamage = Math.max(1, enemyAttack - gameState.player.defense);
+      playerHp -= enemyDamage * deltaTime;
+      
+      totalPlayerDamage += playerDamage * deltaTime;
+      totalEnemyDamage += enemyDamage * deltaTime;
+      combatTime += deltaTime;
+    }
+    
+    totalTime += combatTime;
+  }
+  
+  console.log(`=== Combat Simulator Results (${numTrials} trials) ===`);
+  console.log(`Avg Player DPS: ${(totalPlayerDamage / numTrials).toFixed(2)}`);
+  console.log(`Avg Enemy DPS: ${(totalEnemyDamage / numTrials).toFixed(2)}`);
+  console.log(`Avg Combat Time: ${(totalTime / numTrials).toFixed(2)}s`);
+  console.log(`Equipped: ${gameState.equipped.weapon ? gameState.equipped.weapon.name : 'None'}`);
+  return {
+    playerDPS: totalPlayerDamage / numTrials,
+    enemyDPS: totalEnemyDamage / numTrials,
+    avgTime: totalTime / numTrials
+  };
+}
+
+// Export for console use: window.simulateCombat
+if (typeof window !== 'undefined') {
+  window.simulateCombat = simulateCombat;
+}
+
+function startEnemySpawner() {
+  const area = areas[gameState.currentArea];
+  gameState.combat.spawnIntervalId = setInterval(() => {
+    if (!gameState.combat.active || gameState.combat.paused) return;
+    if (gameState.combat.spawnedEnemiesCount >= area.enemies) {
+      clearInterval(gameState.combat.spawnIntervalId);
+      gameState.combat.spawnIntervalId = null;
+      return;
+    }
+    spawnSingleEnemy();
+  }, area.spawnRate);
+}
+
+function spawnEnemies() {
+  // Deprecated - use spawnSingleEnemy and startEnemySpawner instead
+}
+
+function gameLoop() {
+  if (!gameState.combat.active || gameState.combat.paused) return;
+  
+  const now = Date.now();
+  const deltaTime = (now - gameState.combat.lastFrame) / 1000;
+  gameState.combat.lastFrame = now;
+  
+  // Check if player is colliding with any enemy
+  let isColliding = false;
+  let blockingEnemy = null;
+  
+  gameState.combat.enemies.forEach((enemy, index) => {
+    const enemyScreenX = enemy.x - gameState.combat.scrollX;
+    
+    const playerRect = {
+      x: gameState.combat.playerX,
+      y: 300,
+      width: 30, // Approximate width of player ASCII
+      height: 40 // Approximate height of player ASCII
+    };
+    
+    const enemyRect = {
+      x: enemyScreenX,
+      y: enemy.y,
+      width: enemy.width,
+      height: enemy.height
+    };
+    
+    if (checkCollision(playerRect, enemyRect)) {
+      isColliding = true;
+      if (!blockingEnemy || enemyScreenX < blockingEnemy.x) {
+        blockingEnemy = { enemy, index, screenX: enemyScreenX };
+      }
+    }
+  });
+  
+  // Only scroll if not colliding with an enemy
+  if (!isColliding) {
+    gameState.combat.scrollX += 50 * deltaTime;
+    gameState.combat.mapProgress = gameState.combat.scrollX;
+  }
+  
+  // Check if player reached the end of the map
+  const area = areas[gameState.currentArea];
+  if (gameState.combat.mapProgress >= area.mapLength && gameState.combat.enemies.length === 0) {
+    completeArea();
+    return;
+  }
+  
+  // Update enemies and handle combat
+  // First, tick any status effects on enemies (poison/bleed/freeze/weaken)
+  for (let i = gameState.combat.enemies.length - 1; i >= 0; i--) {
+    const enemy = gameState.combat.enemies[i];
+    if (enemy.effects) {
+      // Poison
+      if (enemy.effects.poison && enemy.effects.poison.timer > 0) {
+        const dmg = (enemy.effects.poison.dmg || 0) * deltaTime;
+        enemy.hp -= dmg;
+        enemy.effects.poison.timer -= deltaTime;
+        // floating text for DOT
+        if (dmg > 0.01 && gameState.combat.floatingTexts) {
+          gameState.combat.floatingTexts.push({ x: enemy.x - gameState.combat.scrollX, y: enemy.y - 10, text: `-${Math.ceil(dmg)}`, ttl: 0.9, alpha: 1, color: '#a6e' });
+        }
+      }
+      // Bleed
+      if (enemy.effects.bleed && enemy.effects.bleed.timer > 0) {
+        const dmg = (enemy.effects.bleed.dmg || 0) * deltaTime;
+        enemy.hp -= dmg;
+        enemy.effects.bleed.timer -= deltaTime;
+        if (dmg > 0.01 && gameState.combat.floatingTexts) {
+          gameState.combat.floatingTexts.push({ x: enemy.x - gameState.combat.scrollX, y: enemy.y - 10, text: `-${Math.ceil(dmg)}`, ttl: 0.9, alpha: 1, color: '#f88' });
+        }
+      }
+      // Weaken and Freeze timers
+      if (enemy.effects.weaken && enemy.effects.weaken.timer > 0) {
+        enemy.effects.weaken.timer -= deltaTime;
+      }
+      if (enemy.effects.freeze && enemy.effects.freeze.timer > 0) {
+        enemy.effects.freeze.timer -= deltaTime;
+      }
+      // Clean up expired effects
+      for (const k of Object.keys(enemy.effects)) {
+        if (enemy.effects[k] && enemy.effects[k].timer <= 0) {
+          delete enemy.effects[k];
+        }
+      }
+      // If enemy died from DOT
+      if (enemy.hp <= 0) {
+        const xpGained = enemy.xp || 0;
+        addXP(xpGained);
+        addLog(`Defeated ${enemy.name} (+${xpGained} XP)`);
+        refreshStats();
+        gameState.combat.enemies.splice(i, 1);
+        continue; // skip further processing for this enemy
+      }
+    }
+  }
+  if (blockingEnemy) {
+    const { enemy, index } = blockingEnemy;
+    
+    // Deal damage to enemy continuously while touching
+    const equipped = gameState.equipped.weapon;
+    const baseAttack = gameState.player.attack + (equipped ? (equipped.stats.attack || 0) : 0);
+    const speedMult = equipped ? (equipped.stats.speed || 1) : 1;
+
+    // Apply weaken effect on enemy (temporary defense reduction)
+    const weakenReduction = enemy.effects && enemy.effects.weaken ? (enemy.effects.weaken.defenseReduction || 0) : 0;
+
+    const playerDPS = Math.max(1, (baseAttack * speedMult) - Math.max(0, enemy.defense - weakenReduction));
+    const damageDealt = playerDPS * deltaTime;
+    enemy.hp -= damageDealt;
+
+    // Apply life steal if weapon has it
+    if (equipped && equipped.effect && equipped.effect.lifeSteal && equipped.effect.lifeSteal.percent) {
+      const heal = damageDealt * (equipped.effect.lifeSteal.percent || 0);
+      gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + heal);
+      // floating heal text
+      if (heal > 0.01 && gameState.combat.floatingTexts) {
+        gameState.combat.floatingTexts.push({ x: gameState.combat.playerX, y: 280, text: `+${Math.ceil(heal)}`, ttl: 0.9, alpha: 1, color: '#8f8' });
+      }
+    }
+
+      // Apply on-hit status effects from equipped weapon (poison, bleed, freeze, weaken)
+      if (equipped && equipped.effect) {
+        // Poison
+        if (equipped.effect.poison) {
+          const p = equipped.effect.poison;
+          enemy.effects = enemy.effects || {};
+          enemy.effects.poison = { timer: p.duration || 3, dmg: p.dmg || 1 };
+          // spawn particle
+          if (gameState.combat.particles) {
+            for (let x = 0; x < 3; x++) {
+              gameState.combat.particles.push({
+                x: enemy.x - gameState.combat.scrollX + Math.random() * 20 - 10,
+                y: enemy.y + Math.random() * 20,
+                vx: (Math.random() - 0.5) * 50,
+                vy: Math.random() * 20 - 10,
+                life: 0.6,
+                maxLife: 0.6,
+                color: '#a6e',
+                size: 3
+              });
+            }
+          }
+        }
+        // Bleed
+        if (equipped.effect.bleed) {
+          const b = equipped.effect.bleed;
+          enemy.effects = enemy.effects || {};
+          enemy.effects.bleed = { timer: b.duration || 4, dmg: b.dmg || 2 };
+          if (gameState.combat.particles) {
+            for (let x = 0; x < 2; x++) {
+              gameState.combat.particles.push({
+                x: enemy.x - gameState.combat.scrollX,
+                y: enemy.y - 5,
+                vx: Math.random() * 30 - 15,
+                vy: -Math.random() * 30,
+                life: 0.8,
+                maxLife: 0.8,
+                color: '#f88',
+                size: 2
+              });
+            }
+          }
+        }
+        // Freeze (chance)
+        if (equipped.effect.freeze && Math.random() < (equipped.effect.freeze.chance || 0)) {
+          const f = equipped.effect.freeze;
+          enemy.effects = enemy.effects || {};
+          enemy.effects.freeze = { timer: f.duration || 1.5, slowFactor: 0.5 };
+          if (gameState.combat.particles) {
+            for (let x = 0; x < 4; x++) {
+              gameState.combat.particles.push({
+                x: enemy.x - gameState.combat.scrollX + Math.random() * 25 - 12,
+                y: enemy.y + Math.random() * 20,
+                vx: (Math.random() - 0.5) * 40,
+                vy: Math.random() * 15 - 8,
+                life: 1.0,
+                maxLife: 1.0,
+                color: '#6ef',
+                size: 2
+              });
+            }
+          }
+        }
+        // Weaken (chance)
+        if (equipped.effect.weaken && Math.random() < (equipped.effect.weaken.chance || 0)) {
+          const w = equipped.effect.weaken;
+          enemy.effects = enemy.effects || {};
+          enemy.effects.weaken = { timer: w.duration || 3, defenseReduction: w.defenseReduction || 1 };
+          if (gameState.combat.particles) {
+            for (let x = 0; x < 2; x++) {
+              gameState.combat.particles.push({
+                x: enemy.x - gameState.combat.scrollX,
+                y: enemy.y - 10,
+                vx: Math.random() * 40 - 20,
+                vy: -Math.random() * 20,
+                life: 0.7,
+                maxLife: 0.7,
+                color: '#ffc',
+                size: 2
+              });
+            }
+          }
+        }
+      }    if (enemy.hp <= 0) {
+      const xpGained = enemy.xp;
+      addXP(xpGained);
+      addLog(`Defeated ${enemy.name} (+${xpGained} XP)`);
+      refreshStats(); // Update stats to show XP gain
+      gameState.combat.enemies.splice(index, 1);
+      
+      // Check if all enemies defeated
+      if (gameState.combat.enemies.length === 0) {
+        completeArea();
+        return;
+      }
+    }
+    
+    // Take damage from enemy continuously while touching
+    // Apply freeze effect (reduce enemy attack while frozen)
+    let enemyAttackEffective = enemy.attack;
+    if (enemy.effects && enemy.effects.freeze && enemy.effects.freeze.timer > 0) {
+      enemyAttackEffective = enemyAttackEffective * (enemy.effects.freeze.slowFactor || 0.5);
+    }
+    // Apply player's equipped armor defense
+    const playerDefenseTotal = gameState.player.defense + (gameState.equipped.armor ? (gameState.equipped.armor.stats.defense || 0) : 0);
+    const enemyDamage = Math.max(1, enemyAttackEffective - playerDefenseTotal);
+    gameState.player.hp -= enemyDamage * deltaTime;
+    
+    if (gameState.player.hp <= 0) {
+      gameState.player.hp = 0;
+      gameOver();
+      return;
+    }
+  }
+  
+  // Draw
+  draw();
+  
+  // Update UI (both RPG and general stats for real-time XP display)
+  updateRPGUI();
+  el("xp-display").textContent = `${gameState.player.xp} / ${gameState.player.xpToNext}`;
+  
+  animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function checkCollision(rect1, rect2) {
+  return rect1.x < rect2.x + rect2.width &&
+         rect1.x + rect1.width > rect2.x &&
+         rect1.y < rect2.y + rect2.height &&
+         rect1.y + rect1.height > rect2.y;
+}
+
+function drawASCII(text, x, y, color, fontSize = 12) {
+  ctx.fillStyle = color;
+  ctx.font = `${fontSize}px monospace`;
+  ctx.textAlign = "center"; // draw centered so variable-width frames stay anchored
+  ctx.textBaseline = "top";
+  
+  const lines = text;
+  lines.forEach((line, index) => {
+    ctx.fillText(line, x, y + index * fontSize);
+  });
+}
+
+function drawBackground() {
+  const area = areas[gameState.currentArea];
+  const bgType = area.background || "forest";
+  const scrollOffset = gameState.combat.scrollX % 400;
+  
+  // Simple ASCII background patterns that repeat and scroll
+  const backgrounds = {
+    forest: ["▲", "▲▲", "▲", "▲▲"],
+    woods: ["🌲", "🌲", "🌲"],
+    mountain: ["⛰", "⛰", "⛰"],
+    river: ["≈≈≈", "≈≈≈", "≈≈≈"],
+    plains: ["~", "~", "~"],
+    cave: ["●●", "●●●", "●●"],
+    temple: ["◼◼", "◼◼", "◼◼"],
+    shadow: ["◆", "◆◆", "◆"],
+    tower: ["▮▮", "▮▮▮", "▮▮"],
+    sanctum: ["★", "★★", "★★★"]
+  };
+  
+  const pattern = backgrounds[bgType] || backgrounds.forest;
+  ctx.fillStyle = "rgba(100, 100, 120, 0.3)";
+  ctx.font = "24px monospace";
+  
+  // Draw scrolling background rows
+  for (let row = 0; row < 3; row++) {
+    let x = -scrollOffset;
+    while (x < gameCanvas.width) {
+      ctx.fillText(pattern[row % pattern.length], x + 50, 50 + row * 60);
+      x += 100;
+    }
+  }
+}
+
+function draw() {
+  // Clear canvas
+  ctx.fillStyle = "#020203";
+  ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+  
+  // Draw scrolling background based on area
+  drawBackground();
+  
+  // Draw ground
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fillRect(0, 350, gameCanvas.width, 50);
+  
+  // Draw ground line
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 350);
+  ctx.lineTo(gameCanvas.width, 350);
+  ctx.stroke();
+  
+  // Draw player ASCII art
+  const playerY = 300;
+  const playerFontSize = 14;
+  drawASCII(playerASCII, gameState.combat.playerX, playerY, "#6ef", playerFontSize);
+  
+  // Draw enemies
+  gameState.combat.enemies.forEach(enemy => {
+    const x = enemy.x - gameState.combat.scrollX;
+    if (x > -50 && x < gameCanvas.width + 50) {
+      const enemyY = enemy.y;
+      const enemyFontSize = enemy.name === "Boss" ? 16 : 12;
+      
+      // Draw enemy ASCII art
+      const enemyColor = enemy.name === "Shadow" ? "#666" : 
+                        enemy.name === "Boss" ? "#f44" : "#f66";
+      drawASCII(enemy.ascii, x, enemyY, enemyColor, enemyFontSize);
+      
+      // Draw status icons (poison, freeze, weaken, bleed)
+      ctx.font = '14px monospace';
+      ctx.textAlign = 'left';
+      let iconX = x + 20;
+      if (enemy.effects) {
+        if (enemy.effects.poison) {
+          ctx.fillStyle = '#a6e'; ctx.fillText('☠', iconX, enemyY - 28); iconX += 18;
+        }
+        if (enemy.effects.bleed) {
+          ctx.fillStyle = '#f88'; ctx.fillText('✸', iconX, enemyY - 28); iconX += 18;
+        }
+        if (enemy.effects.freeze) {
+          ctx.fillStyle = '#6ef'; ctx.fillText('❄', iconX, enemyY - 28); iconX += 18;
+        }
+        if (enemy.effects.weaken) {
+          ctx.fillStyle = '#ffd'; ctx.fillText('↓', iconX, enemyY - 28); iconX += 18;
+        }
+      }
+      
+      // Draw status timers above icons
+      if (enemy.effects) {
+        ctx.font = '10px monospace';
+        ctx.fillStyle = '#ccc';
+        let timerX = x + 20;
+        if (enemy.effects.poison) {
+          ctx.fillText(enemy.effects.poison.timer.toFixed(1), timerX, enemyY - 32);
+          timerX += 18;
+        }
+        if (enemy.effects.bleed) {
+          ctx.fillText(enemy.effects.bleed.timer.toFixed(1), timerX, enemyY - 32);
+          timerX += 18;
+        }
+        if (enemy.effects.freeze) {
+          ctx.fillText(enemy.effects.freeze.timer.toFixed(1), timerX, enemyY - 32);
+          timerX += 18;
+        }
+        if (enemy.effects.weaken) {
+          ctx.fillText(enemy.effects.weaken.timer.toFixed(1), timerX, enemyY - 32);
+          timerX += 18;
+        }
+      }
+      
+  // Draw health bar background (centered on x)
+  const barWidth = enemy.name === "Boss" ? 60 : 40;
+  const barHeight = 6;
+  ctx.fillStyle = "#081018";
+  ctx.fillRect(x - barWidth / 2, enemyY - 15, barWidth, barHeight);
+      
+  // Draw health bar
+  const hpPercent = Math.max(0, enemy.hp / enemy.maxHp);
+  ctx.fillStyle = enemyColor;
+  ctx.fillRect(x - barWidth / 2, enemyY - 15, barWidth * hpPercent, barHeight);
+      
+  // Draw health bar border
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - barWidth / 2, enemyY - 15, barWidth, barHeight);
+      
+  // Draw enemy name (centered)
+  ctx.fillStyle = "#fff";
+  ctx.font = "10px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(enemy.name, x, enemyY - 18);
+    }
+  });
+
+  // Draw floating texts (damage numbers, heals, notifications)
+  if (gameState.combat.floatingTexts && gameState.combat.floatingTexts.length) {
+    for (let i = gameState.combat.floatingTexts.length - 1; i >= 0; i--) {
+      const ft = gameState.combat.floatingTexts[i];
+      ctx.globalAlpha = ft.alpha || 1;
+      ctx.fillStyle = ft.color || '#fff';
+      ctx.font = '14px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(ft.text, ft.x, ft.y - (1 - ft.alpha) * 10);
+      ctx.globalAlpha = 1;
+      // decrease ttl and alpha
+      ft.ttl -= 1/60;
+      ft.alpha -= 0.02;
+      ft.y -= 0.3; // float upward
+      if (ft.ttl <= 0 || ft.alpha <= 0) {
+        gameState.combat.floatingTexts.splice(i, 1);
+      }
+    }
+  }
+
+  // Draw particles (effect visual feedback)
+  if (gameState.combat.particles && gameState.combat.particles.length) {
+    for (let i = gameState.combat.particles.length - 1; i >= 0; i--) {
+      const p = gameState.combat.particles[i];
+      ctx.globalAlpha = p.life / p.maxLife;
+      ctx.fillStyle = p.color || '#fff';
+      ctx.fillRect(p.x, p.y, p.size || 4, p.size || 4);
+      // update particle
+      p.x += p.vx * (deltaTime || 0.016);
+      p.y += p.vy * (deltaTime || 0.016);
+      p.vy += 50 * (deltaTime || 0.016); // gravity
+      p.life -= (deltaTime || 0.016);
+      if (p.life <= 0) {
+        gameState.combat.particles.splice(i, 1);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function updateRPGUI() {
+  const hpPercent = Math.max(0, gameState.player.hp / gameState.player.maxHp);
+  el("player-hp-bar").style.width = `${hpPercent * 100}%`;
+  el("player-hp-text").textContent = `${Math.floor(gameState.player.hp)} / ${gameState.player.maxHp}`;
+}
+
+function completeArea() {
+  gameState.combat.active = false;
+  cancelAnimationFrame(animationFrameId);
+  // Stop spawn timer if running
+  if (gameState.combat.spawnIntervalId) {
+    clearInterval(gameState.combat.spawnIntervalId);
+    gameState.combat.spawnIntervalId = null;
+  }
+  
+  const area = areas[gameState.currentArea];
+  
+  // Give exclusive item
+  const exclusiveItem = {
+    id: `exclusive_${gameState.currentArea}`,
+    name: `${area.name} Trophy`,
+    type: "quest",
+    stats: {}
+  };
+  addToInventory(exclusiveItem.id, exclusiveItem, 1);
+  addLog(`Received ${exclusiveItem.name} for clearing ${area.name}`);
+  
+  // Unlock next area after finishing map
+  if (gameState.currentArea < areas.length - 1) {
+    const nextAreaIndex = gameState.currentArea + 1;
+    if (!gameState.unlockedAreas.includes(nextAreaIndex)) {
+      gameState.unlockedAreas.push(nextAreaIndex);
+      addLog(`Unlocked new area: ${areas[nextAreaIndex].name}`);
+    }
+  }
+  
+  // Unlock unlockables (recipes and gathering) defined on the area
+  if (area.unlockables && Array.isArray(area.unlockables)) {
+    area.unlockables.forEach(u => {
+      if (!gameState.unlockedIdleFeatures.includes(u)) {
+        gameState.unlockedIdleFeatures.push(u);
+        addLog(`Unlocked ${u}`);
+      }
+    });
+    refreshGatheringMenu();
+    refreshMagicMenu();
+    refreshCraftingMenu();
+    refreshStructuresMenu();
+  }
+  
+  refreshStats();
+  refreshInventory();
+  showIdleMenu("gathering-menu");
+  el("combat-section").classList.add("hidden");
+  el("idle-section").classList.remove("hidden");
+}
+
+function gameOver() {
+  gameState.combat.active = false;
+  cancelAnimationFrame(animationFrameId);
+  // Stop spawn timer if running
+  if (gameState.combat.spawnIntervalId) {
+    clearInterval(gameState.combat.spawnIntervalId);
+    gameState.combat.spawnIntervalId = null;
+  }
+  addLog("You were defeated! Recovering over time...");
+  showIdleMenu("gathering-menu");
+  el("combat-section").classList.add("hidden");
+  el("idle-section").classList.remove("hidden");
+  refreshStats();
+}
+
+function pauseRPG() {
+  gameState.combat.paused = !gameState.combat.paused;
+  if (!gameState.combat.paused) {
+    gameState.combat.lastFrame = Date.now();
+    gameLoop();
+  }
+}
+
+function exitRPG() {
+  if (gameState.combat.active) {
+    gameState.combat.active = false;
+    cancelAnimationFrame(animationFrameId);
+    showIdleMenu("gathering-menu");
+    el("combat-section").classList.add("hidden");
+    el("idle-section").classList.remove("hidden");
+  }
+}
+
+// Save/Load
+function saveGame() {
+  const saveData = {
+    player: { ...gameState.player },
+    resources: { ...gameState.resources },
+    inventory: JSON.parse(JSON.stringify(gameState.inventory)),
+    equipped: { ...gameState.equipped },
+    unlockedAreas: [...gameState.unlockedAreas],
+    unlockedIdleFeatures: [...gameState.unlockedIdleFeatures],
+    currentArea: gameState.currentArea,
+    settings: { ...gameState.settings },
+    capacity: { ...gameState.capacity },
+    gameTime: Date.now(),
+    // Persist active gathering jobs (intervals are transient and not serialized)
+    activeActions: Object.fromEntries(Object.entries(gameState.activeActions || {}).map(([k, v]) => [k, { startTime: v.startTime, duration: v.duration }]))
+  };
+  
+  localStorage.setItem("survivalMagicRPG_save", JSON.stringify(saveData));
+  addLog("Game saved!");
+}
+
+function loadGame() {
+  const saveData = localStorage.getItem("survivalMagicRPG_save");
+  if (!saveData) {
+    addLog("No save file found");
+    return false;
+  }
+  
+  try {
+    const data = JSON.parse(saveData);
+    gameState.player = { ...data.player };
+    gameState.resources = { ...data.resources };
+    gameState.inventory = data.inventory || {};
+    gameState.equipped = data.equipped || { weapon: null, armor: null };
+    gameState.unlockedAreas = data.unlockedAreas || [0];
+    gameState.unlockedIdleFeatures = data.unlockedIdleFeatures || [];
+    gameState.currentArea = data.currentArea || 0;
+    gameState.settings = { ...data.settings };
+    gameState.capacity = data.capacity || { current: 0, max: 100 };
+    // Restore active gathering jobs (UI intervals will be created for each)
+    gameState.activeActions = data.activeActions || {};
+    
+    addLog("Game loaded!");
+    refreshStats();
+    refreshGatheringMenu();
+    refreshMagicMenu();
+    refreshCraftingMenu();
+    refreshStructuresMenu();
+    refreshInventory();
+    // Recreate UI intervals for any active gathering jobs
+    Object.keys(gameState.activeActions || {}).forEach(jobId => {
+      // If the job is already past due, process it immediately
+      const job = gameState.activeActions[jobId];
+      if (!job) return;
+      if (Date.now() >= (job.startTime || 0) + (job.duration || 0)) {
+        const actionDef = gatheringActions.find(a => a.id === jobId);
+        if (actionDef) completeGatheringAction(actionDef);
+        else delete gameState.activeActions[jobId];
+      } else {
+        setupGatheringUIInterval(jobId);
+      }
+    });
+    // Restart auto-generators after load based on built structures
+    structures.forEach(structure => {
+      if (gameState.unlockedIdleFeatures.includes(structure.id)) {
+        const actionMap = {
+          "autoWood": "gatherWood",
+          "autoMeat": "gatherMeat",
+          "autoWater": "gatherWater",
+          "autoPlants": "gatherPlants",
+          "autoStone": "gatherStone",
+          "autoRitualStones": "gatherRitualStones"
+        };
+        const mappedActionId = actionMap[structure.effect];
+        if (mappedActionId) {
+          gameState.autoGenerators[mappedActionId] = { 
+            rate: structure.rate,
+            resource: structure.resource,
+            amount: structure.amount
+          };
+          startAutoGenerator(mappedActionId, structure);
+        }
+
+        // Re-apply healing from built healing structures
+        if (structure.effect === "healing") {
+          if (!gameState.passiveHealing) {
+            gameState.passiveHealing = { amount: 1, interval: 5000, structuresBuilt: [], intervalId: null };
+          }
+          if (structure.healAmount) {
+            gameState.passiveHealing.amount += structure.healAmount;
+          }
+          if (structure.healInterval) {
+            gameState.passiveHealing.interval = Math.min(gameState.passiveHealing.interval, structure.healInterval);
+          }
+          if (!gameState.passiveHealing.structuresBuilt.includes(structure.id)) {
+            gameState.passiveHealing.structuresBuilt.push(structure.id);
+          }
+        }
+      }
+    });
+    // Start passive healing after restoring structures
+    if (gameState.passiveHealing) startPassiveHealing();
+    return true;
+  } catch (e) {
+    addLog("Error loading save file");
+    return false;
+  }
+}
+
+// Event Listeners
+function initEventListeners() {
+  // Main Menu
+  el("btn-start").addEventListener("click", () => {
+    showScreen("game-screen");
+    refreshStats();
+    refreshGatheringMenu();
+    refreshMagicMenu();
+    refreshCraftingMenu();
+    refreshStructuresMenu();
+    refreshInventory();
+    addLog("Game started!");
+  });
+  
+  el("btn-load").addEventListener("click", () => {
+    if (loadGame()) {
+      showScreen("game-screen");
+      refreshGatheringMenu();
+      refreshMagicMenu();
+      refreshCraftingMenu();
+      refreshStructuresMenu();
+      refreshInventory();
+      // Restart auto-generators after load based on built structures
+      structures.forEach(structure => {
+        if (gameState.unlockedIdleFeatures.includes(structure.id)) {
+          const actionMap = {
+            "autoWood": "gatherWood",
+            "autoMeat": "gatherMeat",
+            "autoWater": "gatherWater",
+            "autoPlants": "gatherPlants",
+            "autoStone": "gatherStone",
+            "autoRitualStones": "gatherRitualStones"
+          };
+          const mappedActionId = actionMap[structure.effect];
+          if (mappedActionId) {
+            gameState.autoGenerators[mappedActionId] = { 
+              rate: structure.rate,
+              resource: structure.resource,
+              amount: structure.amount
+            };
+            startAutoGenerator(mappedActionId, structure);
+          }
+        }
+      });
+    }
+  });
+  
+  el("btn-settings").addEventListener("click", () => {
+    showScreen("settings-screen");
+  });
+  
+  el("btn-settings-back").addEventListener("click", () => {
+    showScreen("main-menu");
+  });
+  
+  // Settings
+  el("volume-slider").addEventListener("input", (e) => {
+    gameState.settings.volume = parseInt(e.target.value);
+    el("volume-value").textContent = gameState.settings.volume;
+  });
+  
+  el("auto-save-toggle").addEventListener("change", (e) => {
+    gameState.settings.autoSave = e.target.checked;
+  });
+  
+  // Idle Navigation
+  el("btn-gathering").addEventListener("click", () => {
+    showIdleMenu("gathering-menu");
+    refreshGatheringMenu();
+  });
+  
+  el("btn-magic").addEventListener("click", () => {
+    showIdleMenu("magic-menu");
+    refreshMagicMenu();
+  });
+  
+  el("btn-crafting").addEventListener("click", () => {
+    showIdleMenu("crafting-menu");
+    refreshCraftingMenu();
+  });
+  
+  el("btn-structures").addEventListener("click", () => {
+    showIdleMenu("structures-menu");
+    refreshStructuresMenu();
+  });
+  
+  el("btn-inventory").addEventListener("click", () => {
+    showIdleMenu("inventory-menu");
+    refreshInventory();
+  });
+  
+  el("btn-combat").addEventListener("click", () => {
+    showAreaSelection();
+  });
+  
+  el("btn-cancel-area-selection").addEventListener("click", () => {
+    el("area-selection-overlay").classList.add("hidden");
+  });
+  
+  el("btn-exit-combat").addEventListener("click", () => {
+    exitRPG();
+  });
+  
+  el("btn-pause").addEventListener("click", () => {
+    pauseRPG();
+  });
+  
+  el("btn-save-game").addEventListener("click", () => {
+    saveGame();
+  });
+  
+  el("btn-menu").addEventListener("click", () => {
+    if (gameState.combat.active) {
+      exitRPG();
+    }
+    showScreen("main-menu");
+  });
+  
+  // Keyboard shortcuts
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT") return;
+    
+    if (e.key === "i" || e.key === "I") {
+      if (el("game-screen").classList.contains("hidden")) return;
+      showIdleMenu("inventory-menu");
+      refreshInventory();
+    } else if (e.key === "m" || e.key === "M") {
+      if (el("game-screen").classList.contains("hidden")) return;
+      if (gameState.combat.active) {
+        exitRPG();
+      } else {
+        showAreaSelection();
+      }
+    } else if (e.key === "p" || e.key === "P") {
+      if (gameState.combat.active) {
+        pauseRPG();
+      }
+    }
+  });
+  
+  // Auto-save
+  setInterval(() => {
+    if (gameState.settings.autoSave) {
+      saveGame();
+    }
+  }, 60000); // Every minute
+}
+
+// Initialize
+function init() {
+  initRPG();
+  initEventListeners();
+  showScreen("main-menu");
+  // Start passive healing system (runs in background and can be modified by structures)
+  if (gameState.passiveHealing) startPassiveHealing();
+  // Periodically check timestamped gathering jobs so they complete even after tab inactivity
+  setInterval(processGatheringJobs, 1000);
+  addLog("Welcome to Survival Magic RPG!");
+}
+
+// Start game when page loads
+window.addEventListener("DOMContentLoaded", init);
+
+/* ASCII Animator: walking and attacking preview that runs while in RPG */
+const asciiAnimator = {
+  elId: "ascii-anim",
+  interval: null,
+  fps: 8,
+  frame: 0,
+  running: false,
+  mode: "idle" // idle | walk | attack
+};
+
+function combineAscii(leftLines, rightLines, gap = 6, leftOffset = 0, rightOffset = 0) {
+  // leftOffset/rightOffset shift by adding spaces to simulate movement toward/away
+  const leftWidth = Math.max(...leftLines.map(l => l.length));
+  const height = Math.max(leftLines.length, rightLines.length);
+  const out = [];
+  for (let i = 0; i < height; i++) {
+    const l = (leftLines[i] || "").padEnd(leftWidth, ' ');
+    const r = (rightLines[i] || "");
+    const leftPad = ' '.repeat(Math.max(0, leftOffset));
+    const rightPad = ' '.repeat(Math.max(0, rightOffset));
+    out.push(leftPad + l + ' '.repeat(Math.max(2, gap)) + r + rightPad);
+  }
+  return out;
+}
+
+// Player frames: walking (3 frames) and attacking (3 frames)
+const playerFrames = {
+  walk: [
+    ["  O  ", " /|\\ ", " / \\ "],
+    ["  O  ", " /|\\ ", " > \\ "],
+    ["  O  ", " /|\\ ", " | \\ "],
+    ["  O  ", " /|\\ ", " |>\\ "],
+  ],
+  attack: [
+    ["  O  ", " /|\\ ", " / \\ "],
+    ["  O> ", " /|  ", " / \\ "],
+    ["  O  ", " /|\\ ", " / \\ "],
+  ],
+  idle: [
+    ["  O  ", " /|\\ ", " / \\ "],
+  ]
+};
+
+// Enemy generic frames: can be extended per enemy type
+function getEnemyFrameSet(enemy) {
+  const base = (enemy && enemy.ascii) || ["  o  ", " /|\\ ", " / \\"];
+  const alt = base.map(l => l.replace(/\\\\|\//g, m => (m === '/' ? '\\' : '/')));
+  return {
+    walk: [base, alt],
+    attack: [
+      base,
+      base.map(l => l.replace(/\|/, '\\|')),
+      base
+    ],
+    idle: [base]
+  };
+}
+
+function findBlockingEnemy() {
+  if (!gameState.combat || !gameState.combat.enemies) return null;
+  let blocking = null;
+  gameState.combat.enemies.forEach((enemy, index) => {
+    const enemyScreenX = enemy.x - gameState.combat.scrollX;
+    const playerRect = { x: gameState.combat.playerX, y: 300, width: 30, height: 40 };
+    const enemyRect = { x: enemyScreenX, y: enemy.y, width: enemy.width, height: enemy.height };
+    if (checkCollision(playerRect, enemyRect)) {
+      if (!blocking || enemyScreenX < blocking.screenX) {
+        blocking = { enemy, index, screenX: enemyScreenX };
+      }
+    }
+  });
+  return blocking;
+}
+
+function renderAsciiPreview() {
+  const el = document.getElementById(asciiAnimator.elId);
+  if (!el) return;
+
+  // Determine animation mode based on combat state
+  let mode = 'idle';
+  if (gameState.combat && gameState.combat.active) {
+    const blocking = findBlockingEnemy();
+    if (blocking) mode = 'attack';
+    else mode = 'walk';
+  }
+  asciiAnimator.mode = mode;
+
+  // Animate player
+  const pSet = playerFrames[mode] || playerFrames.idle;
+  const pIdx = asciiAnimator.frame % pSet.length;
+  const left = pSet[pIdx];
+
+  // Ensure the in-canvas player sprite uses the current animated frame by
+  // mutating the global `playerASCII` in-place (it's declared as const).
+  try {
+    if (Array.isArray(playerASCII)) {
+      playerASCII.length = 0;
+      left.forEach(l => playerASCII.push(l));
+    } else {
+      window.playerASCII = left.slice();
+    }
+  } catch (err) {}
+
+  // Note: Enemy animation disabled for now - enemies render with their base ASCII directly
+  // To re-enable: uncommment below code and ensure enemy.ascii copies persist correctly
+
+  // Keep the overlay element empty/hidden to avoid duplicate visuals
+  try {
+    el.textContent = '';
+    el.style.opacity = '0';
+  } catch (err) {}
+
+  asciiAnimator.frame++;
+}
+
+function startAsciiAnimation() {
+  const el = document.getElementById(asciiAnimator.elId);
+  if (!el) return;
+  if (asciiAnimator.running) return;
+  asciiAnimator.running = true;
+  asciiAnimator.frame = 0;
+  // Keep the DOM preview hidden; animation will update the canvas data directly
+  el.style.display = 'none';
+  renderAsciiPreview();
+  asciiAnimator.interval = setInterval(renderAsciiPreview, 1000 / asciiAnimator.fps);
+}
+
+function stopAsciiAnimation() {
+  const el = document.getElementById(asciiAnimator.elId);
+  asciiAnimator.running = false;
+  if (asciiAnimator.interval) {
+    clearInterval(asciiAnimator.interval);
+    asciiAnimator.interval = null;
+  }
+  if (el) {
+    // Ensure overlay is cleared and hidden
+    el.style.opacity = '0';
+    el.textContent = '';
+    el.style.display = 'none';
+  }
+}
+
+// Hook animator into RPG lifecycle safely (preserve existing functions)
+if (typeof startRPG === 'function') {
+  const _startRPG = startRPG;
+  startRPG = function() {
+    _startRPG();
+    startAsciiAnimation();
+  };
+}
+if (typeof exitRPG === 'function') {
+  const _exitRPG = exitRPG;
+  exitRPG = function() {
+    stopAsciiAnimation();
+    _exitRPG();
+  };
+}
+if (typeof completeArea === 'function') {
+  const _completeArea = completeArea;
+  completeArea = function() {
+    stopAsciiAnimation();
+    _completeArea();
+  };
+}
+if (typeof gameOver === 'function') {
+  const _gameOver = gameOver;
+  gameOver = function() {
+    stopAsciiAnimation();
+    _gameOver();
+  };
+}

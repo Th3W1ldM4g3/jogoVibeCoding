@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Survival Magic RPG</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Main Menu -->
+  <div id="main-menu" class="screen">
+    <div class="menu-container">
+      <h1 class="game-title">Survival Magic RPG</h1>
+      <div class="menu-buttons">
+        <button class="btn btn-large" id="btn-start">Start Game</button>
+        <button class="btn btn-large" id="btn-load">Load Game</button>
+        <button class="btn btn-large" id="btn-settings">Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Screen -->
+  <div id="settings-screen" class="screen hidden">
+    <div class="menu-container">
+      <h1>Settings</h1>
+      <div class="settings-content">
+        <div class="setting-item">
+          <label>Volume: <span id="volume-value">50</span>%</label>
+          <input type="range" id="volume-slider" min="0" max="100" value="50" />
+        </div>
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="auto-save-toggle" checked />
+            Auto-save
+          </label>
+        </div>
+      </div>
+      <div class="menu-buttons">
+        <button class="btn btn-large" id="btn-settings-back">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-screen" class="screen hidden">
+    <div class="game-container">
+      <!-- Left Panel: Stats and Resources -->
+      <div class="left-panel">
+        <div class="panel">
+          <h1>Survival Magic</h1>
+          
+          <!-- Stats -->
+          <div class="stat-grid">
+            <div class="stat">
+              <div class="small">HP</div>
+              <div id="hp-display" class="big">20 / 20</div>
+            </div>
+            <div class="stat">
+              <div class="small">Level</div>
+              <div id="level-display" class="big">1</div>
+            </div>
+            <div class="stat">
+              <div class="small">Attack</div>
+              <div id="attack-display" class="big">2</div>
+            </div>
+            <div class="stat">
+              <div class="small">Defense</div>
+              <div id="defense-display" class="big">0</div>
+            </div>
+          </div>
+
+          <!-- Resources -->
+          <!-- Resources moved to context: gathering menu, recipes, and inventory -->
+          
+          <!-- Experience and Level Tracking -->
+          <div class="resource-grid">
+            <div class="resource-item">
+              <div class="small">Experience</div>
+              <div id="xp-display" class="big">0 / 10</div>
+            </div>
+          </div>
+
+          <!-- Navigation Buttons -->
+          <div class="nav-buttons">
+            <button class="btn" id="btn-gathering">Gathering</button>
+            <button class="btn" id="btn-magic">Magic</button>
+            <button class="btn" id="btn-crafting">Crafting</button>
+            <button class="btn" id="btn-structures">Structures</button>
+            <button class="btn" id="btn-inventory">Inventory (I)</button>
+            <button class="btn" id="btn-combat">Enter Combat (M)</button>
+            <button class="btn" id="btn-save-game">Save</button>
+            <button class="btn" id="btn-menu">Menu</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Main Content Area -->
+      <div class="right-panel">
+        <!-- Idle Section -->
+        <div id="idle-section" class="content-section">
+          <!-- Gathering Menu -->
+          <div id="gathering-menu" class="menu-content">
+            <h2>Gathering</h2>
+            <div id="gathering-actions" class="action-list"></div>
+          </div>
+
+          <!-- Magic Menu -->
+          <div id="magic-menu" class="menu-content hidden">
+            <h2>Magic</h2>
+            <div id="magic-actions" class="action-list"></div>
+          </div>
+
+          <!-- Crafting Menu -->
+          <div id="crafting-menu" class="menu-content hidden">
+            <h2>Crafting</h2>
+            <div id="crafting-recipes" class="recipe-list"></div>
+          </div>
+
+          <!-- Structures Menu -->
+          <div id="structures-menu" class="menu-content hidden">
+            <h2>Structures</h2>
+            <div id="structures-options" class="structures-list"></div>
+          </div>
+
+          <!-- Inventory Menu -->
+          <div id="inventory-menu" class="menu-content hidden">
+            <h2>Inventory</h2>
+            <div id="inventory-grid" class="inventory-grid"></div>
+          </div>
+
+        </div>
+
+        <!-- Area Selection Overlay -->
+        <div id="area-selection-overlay" class="overlay hidden">
+          <div class="overlay-content">
+            <h2>Select Area</h2>
+            <div id="area-list" class="action-list"></div>
+            <button class="btn btn-small" id="btn-cancel-area-selection" style="margin-top: 12px;">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Combat Section -->
+        <div id="combat-section" class="content-section hidden">
+          <div class="combat-container">
+            <div class="combat-header">
+              <div class="area-name" id="area-name">Forest Path</div>
+              <button class="btn btn-small" id="btn-exit-combat">Exit</button>
+            </div>
+            <div class="combat-viewport">
+              <canvas id="game-canvas" width="800" height="400"></canvas>
+              <pre id="ascii-anim" aria-hidden="true"></pre>
+            </div>
+            <div class="combat-stats">
+              <div class="hp-bar-container">
+                <div class="hp-label">Player HP</div>
+                <div class="bar">
+                  <div id="player-hp-bar" class="bar-inner" style="width:100%"></div>
+                </div>
+                <div id="player-hp-text" class="hp-text">20 / 20</div>
+              </div>
+            </div>
+            <div class="combat-controls">
+              <button class="btn" id="btn-pause">Pause (P)</button>
+              <button class="btn" id="btn-use-item-1">Use Item 1</button>
+              <button class="btn" id="btn-use-item-2">Use Item 2</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Event Log -->
+        <div class="panel log-panel">
+          <div class="log-header">Event Log</div>
+          <div id="event-log" class="log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+<script src="script.js"></script>
+</html>
