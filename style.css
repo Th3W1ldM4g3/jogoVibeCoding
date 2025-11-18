@@ -1,15 +1,11 @@
 :root {
-  /* Nature / survival palette */
-  --bg: #08110a;            /* deep forest green */
-  --panel: #122016;         /* darker moss/wood */
-  --accent: #7fc97f;        /* leaf green accent */
-  --muted: #9aa69a;         /* muted sage */
+  --bg: #0b0b0d;
+  --panel: #0f1113;
+  --accent: #d46bff;
+  --muted: #9aa0a6;
   --mono: "Courier New", Courier, monospace;
-  --success: #9ae69a;       /* lighter green for success/progress */
-  --danger: #f18b4b;        /* warm orange/red for damage */
-  --water: #5fb3d3;         /* water / sky accent */
-  --earth: #6b4f2b;         /* earth brown */
-  --sun: #f6e7a0;           /* warm sunlight */
+  --success: #6ef;
+  --danger: #f66;
 }
 
 * {
@@ -19,8 +15,8 @@
 html, body {
   height: 100%;
   margin: 0;
-  background: linear-gradient(180deg, #07120a 0%, #0b140c 60%);
-  color: #e6f0e8;
+  background: linear-gradient(180deg, #070708 0%, #0b0b0d 60%);
+  color: #e8eef2;
   font-family: Inter, system-ui, sans-serif;
   overflow: hidden;
 }
@@ -60,15 +56,14 @@ html, body {
 
 /* Buttons */
 .btn {
-  background: linear-gradient(180deg, rgba(24,60,24,0.95), rgba(16,40,18,0.95));
-  border: 1px solid rgba(127,193,127,0.12);
-  color: #f1f8f2;
+  background: linear-gradient(180deg, #1b1b1f, #141317);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  color: #eaeef2;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  box-shadow: 0 4px 10px rgba(8,18,8,0.25);
+  transition: all 0.2s;
 }
 .recipe-section { margin-bottom: 12px; }
 .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
@@ -79,10 +74,8 @@ html, body {
 .recipe-cost .lack-resource { color: #a55; }
 
 .btn:hover {
-  background: linear-gradient(180deg, rgba(28,90,28,0.98), rgba(22,70,20,0.98));
-  border-color: rgba(127,193,127,0.18);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 26px rgba(12,30,12,0.28);
+  background: linear-gradient(180deg, #2b2b2f, #242427);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .inventory-resources { margin-bottom: 10px; padding: 8px; background: #0f1012; border-radius:6px; border:1px solid #222; }
@@ -102,8 +95,8 @@ html, body {
 }
 
 .progress-placeholder { height: 28px; }
-.progress-bar { position: relative; background: linear-gradient(180deg, rgba(8,18,16,0.85), rgba(6,14,12,0.85)); height: 28px; border-radius: 6px; overflow: hidden; margin:6px 0; border: 1px solid rgba(80,110,80,0.06); }
-.progress-bar-inner { background: linear-gradient(90deg, var(--success) 0%, #5fe36a 100%); height:100%; width:0%; transition: width 0.05s linear; box-shadow: 0 2px 8px rgba(80,180,100,0.12); }
+.progress-bar { position: relative; background: #081018; height: 28px; border-radius: 4px; overflow: hidden; margin:6px 0; }
+.progress-bar-inner { background: linear-gradient(90deg,#3af,#06f); height:100%; width:0%; transition: width 0.05s linear; }
 .progress-text { position: absolute; right:6px; top:4px; font-size:12px; color:#fff; }
 .action-controls { display:flex; justify-content:flex-end; }
 
@@ -207,12 +200,11 @@ html, body {
 
 /* Panel */
 .panel {
-  background: linear-gradient(180deg, rgba(18,32,22,0.9), rgba(8,16,10,0.9));
-  border: 1px solid rgba(124, 103, 80, 0.08); /* wood-ish border */
+  background: linear-gradient(180deg, var(--panel), #0b0b0f);
+  border: 1px solid rgba(255, 255, 255, 0.03);
   padding: 8px;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow-y: auto;
-  box-shadow: 0 6px 18px rgba(5, 20, 10, 0.35);
 }
 
 .left-panel .panel {
@@ -380,9 +372,9 @@ h2 {
 
 .progress-bar-inner {
   height: 100%;
-  background: linear-gradient(90deg, var(--success) 0%, #5fe36a 100%);
+  background: linear-gradient(90deg, #6ef 0%, #a3f 100%);
   transition: width 0.1s;
-  box-shadow: 0 0 10px rgba(100, 220, 120, 0.18);
+  box-shadow: 0 0 8px rgba(110, 239, 255, 0.3);
 }
 
 .progress-text {
@@ -528,14 +520,14 @@ h2 {
   top: 50%;
   transform: translate(-50%, -40%);
   font-family: var(--mono), monospace;
-  color: var(--accent);
+  color: #6ef;
   white-space: pre;
   text-align: center;
   pointer-events: none;
   font-size: 14px;
   line-height: 1;
   opacity: 0.98;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.7), 0 0 8px rgba(127,193,127,0.06);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.7), 0 0 6px rgba(110,239,255,0.06);
   transition: opacity 0.12s linear, transform 0.25s ease;
   z-index: 5;
   mix-blend-mode: screen;
@@ -552,18 +544,17 @@ h2 {
 
 /* Resource card styling for inventory header */
 .res-card {
-  background: linear-gradient(180deg, rgba(8,18,16,0.9), rgba(12,28,20,0.9));
-  border: 1px solid rgba(80,110,80,0.08);
+  background: #081018;
+  border: 1px solid rgba(255,255,255,0.03);
   padding: 6px;
-  border-radius: 8px;
+  border-radius: 6px;
   width: 84px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 6px 14px rgba(6,18,10,0.22);
 }
-.res-card .res-name { font-size: 11px; font-weight:600; text-transform: capitalize; color: var(--sun); }
+.res-card .res-name { font-size: 11px; font-weight:600; text-transform: capitalize; }
 .res-card .res-amt { font-size: 12px; color: var(--muted); }
 
 @keyframes ascii-bob {
@@ -603,9 +594,8 @@ h2 {
 
 .bar-inner {
   height: 100%;
-  background: linear-gradient(90deg, #7fe07f 0%, #4fbf4f 100%);
+  background: linear-gradient(90deg, #6ef 0%, #a3f 100%);
   transition: width 0.2s;
-  box-shadow: inset 0 -6px 12px rgba(20,80,20,0.12);
 }
 
 .hp-text {
@@ -635,8 +625,7 @@ h2 {
 
 .enemy-hp-bar-inner {
   height: 100%;
-  background: linear-gradient(90deg, #f18b4b 0%, #f6c08a 100%);
-  box-shadow: inset 0 -4px 8px rgba(160,80,40,0.12);
+  background: linear-gradient(90deg, #f66 0%, #f99 100%);
 }
 
 /* Log */
