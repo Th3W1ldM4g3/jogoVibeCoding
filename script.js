@@ -1057,7 +1057,7 @@ function refreshInventory() {
   const container = el("inventory-grid");
   container.innerHTML = "";
 
-  // Materials section: show current materials/resources as cards similar to crafting
+  // Materials section: show current materials/resources as cards similar to crafting (only show if qty > 0)
   const materialsList = Object.entries(gameState.resources).map(([r, a]) => {
     const art = getAsciiForId(r).join('\n');
     const displayName = resourceDisplayNames[r] || r;
@@ -1067,7 +1067,7 @@ function refreshInventory() {
       art,
       qty: Math.floor(a)
     };
-  }).filter(x => true);
+  }).filter(x => x.qty > 0);  // Only show materials with quantity > 0
 
   if (materialsList.length) {
     const section = document.createElement('div');
@@ -1224,29 +1224,45 @@ function showAreaSelection() {
 
 function useInventoryItem(itemId, item) {
   if (item.type === "weapon") {
-    // Check weapon constraints - shields work with small weapons and swords, not heavy weapons
-    if (item.weaponType === "heavy" && gameState.equipped.armor && gameState.equipped.armor.weaponType === "shield") {
-      addLog(`Cannot equip heavy weapon with shield`);
-      return;
-    }
-    if (item.weaponType === "shield" && gameState.equipped.weapon && gameState.equipped.weapon.weaponType === "heavy") {
-      addLog(`Cannot equip shield with heavy weapon`);
-      return;
+    // Check weapon constraints - heavy weapons cannot be dual-wielded with shields
+    const currentWeapon = gameState.equipped.weapon;
+    const currentShield = gameState.equipped.armor && gameState.equipped.armor.weaponType === "shield" ? gameState.equipped.armor : null;
+    
+    if (item.weaponType === "shield") {
+      // Trying to equip a shield
+      if (currentWeapon && currentWeapon.weaponType === "heavy") {
+        addLog(`Cannot equip shield with heavy weapon`);
+        return;
+      }
+      // Shields go into armor slot for equipment purposes
+      gameState.equipped.armor = item;
+      gameState.equipped.armor.id = itemId;
+    } else if (item.weaponType === "heavy") {
+      // Trying to equip heavy weapon
+      if (currentShield) {
+        addLog(`Cannot equip heavy weapon with shield`);
+        return;
+      }
+      gameState.equipped.weapon = item;
+      gameState.equipped.weapon.id = itemId;
+    } else {
+      // Regular weapon (sword, bow, shortsword, etc)
+      gameState.equipped.weapon = item;
+      gameState.equipped.weapon.id = itemId;
     }
     
-    gameState.equipped.weapon = item;
-    gameState.equipped.weapon.id = itemId; // Store ID for tracking
     addLog(`Equipped ${item.name}`);
     refreshStats();
     refreshInventory();
   } else if (item.type === "armor") {
+    // Regular armor (not shield)
     gameState.equipped.armor = item;
-    gameState.equipped.armor.id = itemId; // Store ID for tracking
+    gameState.equipped.armor.id = itemId;
     addLog(`Equipped ${item.name}`);
     refreshStats();
     refreshInventory();
   } else if (item.type === "consumable") {
-    if (item.effect.hp) {
+    if (item.effect && item.effect.hp) {
       gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + item.effect.hp);
       removeFromInventory(itemId, 1);
       addLog(`Used ${item.name} (+${item.effect.hp} HP)`);
@@ -1836,6 +1852,18 @@ function getPlayerASCIIWithEquipment() {
 }
 
 function drawASCII(text, x, y, color, fontSize = 12) {
+  ctx.fillStyle = color;
+  ctx.font = `${fontSize}px monospace`;
+  ctx.textAlign = "center"; // draw centered so variable-width frames stay anchored
+  ctx.textBaseline = "top";
+  
+  const lines = text;
+  lines.forEach((line, index) => {
+    ctx.fillText(line, x, y + index * fontSize);
+  });
+}
+
+function drawBackground() {
   const area = areas[gameState.currentArea];
   const bgType = area.background || "forest";
   
