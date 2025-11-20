@@ -56,6 +56,8 @@ const gameState = {
     structuresBuilt: [], // track structures that modified healing
     intervalId: null
   },
+  // Track upgrades/levels for built structures
+  structureLevels: {},
   combat: {
     active: false,
     paused: false,
@@ -874,30 +876,65 @@ function refreshStructuresMenu() {
     item.className = "structure-item";
     
     if (isBuilt) {
+      const level = gameState.structureLevels[structure.id] || 1;
+      const maxLevel = structure.maxLevel || 3;
       // Already built - show production rate
         if (structure.amount && structure.resource) {
-          const ratePerSecond = (structure.amount / (structure.rate / 1000)).toFixed(2);
+          // Read current production from generator (which has upgrade scaling applied)
+          const actionMap = {
+            "autoWood": "gatherWood",
+            "autoMeat": "gatherMeat",
+            "autoWater": "gatherWater",
+            "autoPlants": "gatherPlants",
+            "autoStone": "gatherStone",
+            "autoRitualStones": "gatherRitualStones"
+          };
+          const mappedActionId = actionMap[structure.effect];
+          const gen = gameState.autoGenerators[mappedActionId];
+          const currentAmount = gen ? gen.amount : structure.amount;
+          const currentRate = gen ? gen.rate : structure.rate;
+          const ratePerSecond = (currentAmount / (currentRate / 1000)).toFixed(2);
           item.innerHTML = `
             <div class="structure-info">
-              <div class="structure-name">${structure.name}</div>
+              <div class="structure-name">${structure.name} (Lv ${level})</div>
               <div class="small" style="color: var(--success);">Built - Producing ${ratePerSecond} ${structure.resource}/sec</div>
             </div>
           `;
         } else if (structure.effect === 'healing') {
+          // For healing structures, read the actual current healing stats
+          const currentHealAmount = gameState.passiveHealing ? gameState.passiveHealing.amount : structure.healAmount;
+          const currentHealInterval = gameState.passiveHealing ? gameState.passiveHealing.interval : structure.healInterval;
           item.innerHTML = `
             <div class="structure-info">
-              <div class="structure-name">${structure.name}</div>
-              <div class="small" style="color: var(--success);">Built - Provides healing (+${structure.healAmount} HP every ${structure.healInterval / 1000}s)</div>
+              <div class="structure-name">${structure.name} (Lv ${level})</div>
+              <div class="small" style="color: var(--success);">Built - Provides healing (+${currentHealAmount} HP every ${(currentHealInterval / 1000).toFixed(1)}s)</div>
             </div>
           `;
         } else {
           item.innerHTML = `
             <div class="structure-info">
-              <div class="structure-name">${structure.name}</div>
+              <div class="structure-name">${structure.name} (Lv ${level})</div>
               <div class="small" style="color: var(--success);">Built</div>
             </div>
           `;
         }
+      // Show upgrade button if not at max level
+      if (level < maxLevel) {
+        const nextCost = computeUpgradeCost(structure, level + 1);
+        const canAffordUpgrade = canAfford(nextCost);
+        const costDisplay = Object.entries(nextCost).map(([r, a]) => `${a} ${resourceDisplayNames[r] || r}`).join(", ");
+        const upgradeHtml = `
+          <div class="structure-upgrade">
+            <div class="small">Upgrade cost: ${costDisplay}</div>
+            <button class="btn structure-upgrade-btn" id="upgrade-${structure.id}" ${!canAffordUpgrade ? 'disabled' : ''}>Upgrade</button>
+          </div>`;
+        item.innerHTML += upgradeHtml;
+        // attach listener
+        const upBtn = item.querySelector(`#upgrade-${structure.id}`);
+        if (upBtn) upBtn.addEventListener('click', () => upgradeStructure(structure));
+      } else {
+        item.innerHTML += `<div class="small">Max Level</div>`;
+      }
     } else {
       // Not built - show build option
       const canAffordStructure = canAfford(structure.cost);
@@ -920,7 +957,10 @@ function refreshStructuresMenu() {
           </button>
         `;
       
-      const btn = el(`structure-${structure.id}`);
+      // Query the button from the newly-created `item` element so the
+      // listener is attached to the real DOM node (document.getElementById
+      // won't find it until it's appended to the document).
+      const btn = item.querySelector(`#structure-${structure.id}`);
       if (btn) {
         btn.addEventListener("click", () => buildStructure(structure));
       }
@@ -938,6 +978,8 @@ function buildStructure(structure) {
   
   payCost(structure.cost);
   gameState.unlockedIdleFeatures.push(structure.id);
+  // Initialize structure level (1 = built). Upgrades will increment this.
+  if (!gameState.structureLevels[structure.id]) gameState.structureLevels[structure.id] = 1;
   
   // Start auto-generation based on structure
   const actionId = structure.effect.replace("auto", "gather");
@@ -1025,6 +1067,83 @@ function startAutoGenerator(actionId, structure = null) {
   }, generator.rate);
   
   generator.interval = interval;
+}
+
+function stopAutoGenerator(actionId) {
+  const gen = gameState.autoGenerators[actionId];
+  if (gen && gen.interval) {
+    clearInterval(gen.interval);
+    gen.interval = null;
+  }
+}
+
+// Compute an upgrade cost for a structure based on its base cost and desired level
+function computeUpgradeCost(structure, nextLevel) {
+  // Simple scaling: multiply each base cost by nextLevel (1 -> 2x for level 2, etc.)
+  const factor = nextLevel; // next level multiplier
+  const newCost = {};
+  Object.entries(structure.cost || {}).forEach(([r, a]) => {
+    newCost[r] = Math.ceil(a * factor);
+  });
+  return newCost;
+}
+
+function upgradeStructure(structure) {
+  const currentLevel = gameState.structureLevels[structure.id] || 1;
+  const maxLevel = structure.maxLevel || 3;
+  if (currentLevel >= maxLevel) {
+    addLog(`${structure.name} is already at maximum level (${maxLevel}).`);
+    return;
+  }
+
+  const nextLevel = currentLevel + 1;
+  const cost = computeUpgradeCost(structure, nextLevel);
+  if (!canAfford(cost)) {
+    addLog(`Cannot afford upgrade for ${structure.name}`);
+    return;
+  }
+
+  payCost(cost);
+  gameState.structureLevels[structure.id] = nextLevel;
+
+  // Improve effects: for resource generators, increase amount and/or decrease interval
+  const actionMap = {
+    "autoWood": "gatherWood",
+    "autoMeat": "gatherMeat",
+    "autoWater": "gatherWater",
+    "autoPlants": "gatherPlants",
+    "autoStone": "gatherStone",
+    "autoRitualStones": "gatherRitualStones"
+  };
+  const mappedActionId = actionMap[structure.effect];
+  if (mappedActionId && gameState.autoGenerators[mappedActionId]) {
+    const gen = gameState.autoGenerators[mappedActionId];
+    // Increase amount by 50% per upgrade and make it faster by 20% per upgrade
+    gen.amount = +(gen.amount * 1.5).toFixed(2);
+    gen.rate = Math.max(1000, Math.floor(gen.rate * 0.8));
+    // Restart generator to apply new rate
+    stopAutoGenerator(mappedActionId);
+    startAutoGenerator(mappedActionId, structure);
+  }
+
+  // If the structure provides healing, adjust passiveHealing values
+  if (structure.effect === "healing" && gameState.passiveHealing) {
+    // Increase heal amount proportional to structure's healAmount
+    if (structure.healAmount) {
+      gameState.passiveHealing.amount += structure.healAmount; // add base heal per upgrade
+    }
+    if (structure.healInterval) {
+      // make healing faster a bit
+      gameState.passiveHealing.interval = Math.max(1000, Math.floor(gameState.passiveHealing.interval * 0.9));
+    }
+    // restart passive healing to pick up new interval/amount
+    stopPassiveHealing();
+    startPassiveHealing();
+  }
+
+  addLog(`${structure.name} upgraded to level ${nextLevel}`);
+  refreshStats();
+  refreshStructuresMenu();
 }
 
 // Passive healing system (heals the player over time; can be improved by structures)
@@ -2244,6 +2363,7 @@ function saveGame() {
     equipped: { ...gameState.equipped },
     unlockedAreas: [...gameState.unlockedAreas],
     unlockedIdleFeatures: [...gameState.unlockedIdleFeatures],
+    structureLevels: { ...gameState.structureLevels },
     currentArea: gameState.currentArea,
     settings: { ...gameState.settings },
     capacity: { ...gameState.capacity },
@@ -2271,6 +2391,7 @@ function loadGame() {
     gameState.equipped = data.equipped || { weapon: null, armor: null };
     gameState.unlockedAreas = data.unlockedAreas || [0];
     gameState.unlockedIdleFeatures = data.unlockedIdleFeatures || [];
+  gameState.structureLevels = data.structureLevels || {};
     gameState.currentArea = data.currentArea || 0;
     gameState.settings = { ...data.settings };
     gameState.capacity = data.capacity || { current: 0, max: 100 };
@@ -2310,10 +2431,14 @@ function loadGame() {
         };
         const mappedActionId = actionMap[structure.effect];
         if (mappedActionId) {
+          const level = gameState.structureLevels[structure.id] || 1;
+          // Apply upgrades scaling: amount increases by 1.5^(level-1), rate improves by 0.8^(level-1)
+          const scaledAmount = +(structure.amount * Math.pow(1.5, Math.max(0, level - 1))).toFixed(2);
+          const scaledRate = Math.max(1000, Math.floor(structure.rate * Math.pow(0.8, Math.max(0, level - 1))));
           gameState.autoGenerators[mappedActionId] = { 
-            rate: structure.rate,
+            rate: scaledRate,
             resource: structure.resource,
-            amount: structure.amount
+            amount: scaledAmount
           };
           startAutoGenerator(mappedActionId, structure);
         }
@@ -2323,11 +2448,15 @@ function loadGame() {
           if (!gameState.passiveHealing) {
             gameState.passiveHealing = { amount: 1, interval: 5000, structuresBuilt: [], intervalId: null };
           }
+          const level = gameState.structureLevels[structure.id] || 1;
           if (structure.healAmount) {
-            gameState.passiveHealing.amount += structure.healAmount;
+            // Add base healAmount per built level
+            gameState.passiveHealing.amount += structure.healAmount * level;
           }
           if (structure.healInterval) {
-            gameState.passiveHealing.interval = Math.min(gameState.passiveHealing.interval, structure.healInterval);
+            // take the fastest interval among built structures and scale it slightly for upgrades
+            const scaledInterval = Math.max(1000, Math.floor(structure.healInterval * Math.pow(0.9, Math.max(0, level - 1))));
+            gameState.passiveHealing.interval = Math.min(gameState.passiveHealing.interval, scaledInterval);
           }
           if (!gameState.passiveHealing.structuresBuilt.includes(structure.id)) {
             gameState.passiveHealing.structuresBuilt.push(structure.id);
