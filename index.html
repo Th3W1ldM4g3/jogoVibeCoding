@@ -17,6 +17,45 @@
         <button class="btn btn-large" id="btn-settings">Settings</button>
       </div>
     </div>
+      <script>
+        // Inline fallback to detect clicks on Start Game independent of external JS
+        (function(){
+          try { console.log('[INLINE] small click detector injected'); } catch(e){}
+          document.addEventListener('click', function(e){
+            try {
+              var t = e.target;
+              if (t && t.id === 'btn-start') {
+                try { console.log('[INLINE] btn-start clicked'); } catch(e){}
+                try { document.body.setAttribute('data-start-clicked-inline', String(Date.now())); } catch(e){}
+                // Try to call startGame if it's available (from script.js)
+                if (typeof startGame === 'function') {
+                  try { console.log('[INLINE] Calling startGame()'); } catch(e){}
+                  startGame();
+                } else {
+                  try { console.log('[INLINE] startGame not available yet, waiting for script.js...'); } catch(e){}
+                  // Wait for script.js to load and retry
+                  var retries = 0;
+                  var maxRetries = 10;
+                  var checkInterval = setInterval(function() {
+                    retries++;
+                    if (typeof startGame === 'function') {
+                      clearInterval(checkInterval);
+                      try { console.log('[INLINE] startGame now available, calling it'); } catch(e){}
+                      startGame();
+                    } else if (retries >= maxRetries) {
+                      clearInterval(checkInterval);
+                      try { console.error('[INLINE] startGame still not available after', maxRetries, 'retries'); } catch(e){}
+                      alert('Game script failed to load. Please refresh the page.');
+                    }
+                  }, 100);
+                }
+              }
+            } catch(err) {
+              try { console.error('[INLINE] Error:', err); } catch(e){}
+            }
+          }, true);
+        })();
+      </script>
   </div>
 
   <!-- Settings Screen -->
@@ -175,6 +214,46 @@
       </div>
     </div>
   </div>
-</body>
-<script src="script.js"></script>
+<!-- Inline debug helper to detect how the page is being loaded and which script URL is used -->
+<script>
+  try {
+    console.log('[LOAD DEBUG] location', location.href);
+    console.log('[LOAD DEBUG] readyState', document.readyState);
+    Array.from(document.querySelectorAll('script')).map(s => s.src || '(inline)').forEach(s => console.log('[LOAD DEBUG] script', s));
+  } catch (e) { console.error(e); }
+</script>
+<script>
+  // Create script element to track loading
+  var script = document.createElement('script');
+  script.src = 'script.js';
+  script.onload = function() {
+    console.log('[LOAD DEBUG] script.js loaded successfully');
+    if (typeof startGame === 'function') {
+      console.log('[LOAD DEBUG] startGame is available');
+      document.body.setAttribute('data-script-loaded', 'true');
+    } else {
+      console.error('[LOAD ERROR] script.js loaded but startGame is not available');
+      document.body.setAttribute('data-script-error', 'startGame-missing');
+    }
+  };
+  script.onerror = function() {
+    console.error('[LOAD ERROR] Failed to load script.js');
+    document.body.setAttribute('data-script-error', 'load-failed');
+    alert('Failed to load game script. Please check that script.js exists and refresh the page.');
+  };
+  document.head.appendChild(script);
+</script>
+<script>
+  // Verify script.js loaded successfully after a short delay
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      if (typeof startGame === 'function') {
+        console.log('[LOAD DEBUG] Final check: startGame is available');
+      } else {
+        console.error('[LOAD ERROR] Final check: startGame is not available');
+        document.body.setAttribute('data-script-error', 'final-check-failed');
+      }
+    }, 100);
+  });
+</script>
 </html>

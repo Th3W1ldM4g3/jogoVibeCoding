@@ -1,3 +1,78 @@
+// Global start game function - define early so it's always available
+function startGame() {
+  try { console.log('[DEBUG] startGame() called'); } catch (e) {}
+  const gs = document.getElementById('game-screen');
+  if (gs && !gs.classList.contains('hidden')) return; // already visible
+  if (typeof showScreen === 'function') showScreen("game-screen");
+  if (typeof refreshStats === 'function') refreshStats();
+  if (typeof refreshGatheringMenu === 'function') refreshGatheringMenu();
+  if (typeof refreshMagicMenu === 'function') refreshMagicMenu();
+  if (typeof refreshCraftingMenu === 'function') refreshCraftingMenu();
+  if (typeof refreshStructuresMenu === 'function') refreshStructuresMenu();
+  if (typeof refreshInventory === 'function') refreshInventory();
+  if (typeof addLog === 'function') addLog("Game started!");
+  try { document.body.setAttribute('data-start-clicked', String(Date.now())); } catch(e){}
+  
+  // Re-attach event listeners after game screen is shown (in case they weren't attached initially)
+  setTimeout(() => {
+    attachMenuEventListeners();
+  }, 100);
+}
+
+// Function to attach menu event listeners (can be called multiple times safely)
+let menuDelegationAttached = false;
+function attachMenuEventListeners() {
+  // Idle Navigation - use event delegation as fallback (only attach once)
+  if (!menuDelegationAttached) {
+    const gameScreen = document.getElementById('game-screen');
+    if (gameScreen) {
+      gameScreen.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!target) return;
+        
+        if (target.id === 'btn-gathering') {
+          console.log('[DEBUG] Gathering button clicked (delegated)');
+          e.preventDefault();
+          e.stopPropagation();
+          showIdleMenu("gathering-menu");
+          refreshGatheringMenu();
+        } else if (target.id === 'btn-magic') {
+          console.log('[DEBUG] Magic button clicked (delegated)');
+          e.preventDefault();
+          e.stopPropagation();
+          showIdleMenu("magic-menu");
+          refreshMagicMenu();
+        } else if (target.id === 'btn-crafting') {
+          console.log('[DEBUG] Crafting button clicked (delegated)');
+          e.preventDefault();
+          e.stopPropagation();
+          showIdleMenu("crafting-menu");
+          refreshCraftingMenu();
+        } else if (target.id === 'btn-structures') {
+          console.log('[DEBUG] Structures button clicked (delegated)');
+          e.preventDefault();
+          e.stopPropagation();
+          showIdleMenu("structures-menu");
+          refreshStructuresMenu();
+        } else         if (target.id === 'btn-inventory') {
+          console.log('[DEBUG] Inventory button clicked (delegated)');
+          e.preventDefault();
+          e.stopPropagation();
+          showIdleMenu("inventory-menu");
+          refreshInventory();
+        } else if (target.id === 'btn-combat') {
+          console.log('[DEBUG] Combat button clicked (delegated)');
+          e.preventDefault();
+          e.stopPropagation();
+          showAreaSelection();
+        }
+      });
+      menuDelegationAttached = true;
+      console.log('[DEBUG] Menu event delegation attached');
+    }
+  }
+}
+
 // Game State
 const gameState = {
   player: {
@@ -71,19 +146,18 @@ const gameState = {
     projectiles: []
   }
 };
-
 // Game Data
 const areas = [
-  { name: "Forest Path", enemies: 5, boss: false, unlockIdle: null, unlockables: [], mapLength: 2000, spawnRate: 2000, background: "forest", unlockedMaterial: null },
-  { name: "Dark Woods", enemies: 8, boss: true, unlockIdle: "autoWood", unlockables: [], mapLength: 2200, spawnRate: 1800, background: "woods", unlockedMaterial: "charcoal" },
-  { name: "Mountain Trail", enemies: 10, boss: false, unlockIdle: "stoneGathering", unlockables: [], mapLength: 2500, spawnRate: 2000, background: "mountain", unlockedMaterial: "ore" },
-  { name: "River Crossing", enemies: 12, boss: false, unlockIdle: "waterGathering", unlockables: [], mapLength: 2600, spawnRate: 1800, background: "river", unlockedMaterial: "clay" },
-  { name: "Plains", enemies: 15, boss: false, unlockIdle: "plantGathering", unlockables: ["boneGathering"], mapLength: 3000, spawnRate: 1600, background: "plains", unlockedMaterial: "fiber" },
-  { name: "Cave System", enemies: 18, boss: false, unlockIdle: "ritualStoneGathering", unlockables: ["ritualStoneGathering"], mapLength: 3200, spawnRate: 1700, background: "cave", unlockedMaterial: "sulfur" },
-  { name: "Ancient Temple", enemies: 20, boss: true, unlockIdle: "advancedCrafting", unlockables: ["advancedCrafting"], mapLength: 3500, spawnRate: 1500, background: "temple", unlockedMaterial: "gold" },
-  { name: "Shadow Realm", enemies: 25, boss: false, unlockIdle: null, unlockables: ["scrapGathering"], mapLength: 3800, spawnRate: 1400, background: "shadow", unlockedMaterial: "obsidian" },
-  { name: "Magical Tower", enemies: 30, boss: false, unlockIdle: "powerfulUpgrades", unlockables: ["crystalGathering"], mapLength: 4200, spawnRate: 1300, background: "tower", unlockedMaterial: "essence" },
-  { name: "Final Sanctum", enemies: 35, boss: true, unlockIdle: null, unlockables: [], mapLength: 5000, spawnRate: 1200, background: "sanctum", unlockedMaterial: "void" }
+  { name: "Forest Path", enemies: 5, boss: false, unlockIdle: null, unlockables: [], mapLength: 2000, spawnRate: 2000, background: "forest", unlockedMaterial: null, signatureMechanic: null },
+  { name: "Dark Woods", enemies: 8, boss: true, unlockIdle: "autoWood", unlockables: [], mapLength: 2200, spawnRate: 1800, background: "woods", unlockedMaterial: "charcoal", signatureMechanic: "lowVisibility" },
+  { name: "Mountain Trail", enemies: 10, boss: false, unlockIdle: "stoneGathering", unlockables: [], mapLength: 2500, spawnRate: 2000, background: "mountain", unlockedMaterial: "ore", signatureMechanic: "windResistance" },
+  { name: "River Crossing", enemies: 12, boss: false, unlockIdle: "waterGathering", unlockables: [], mapLength: 2600, spawnRate: 1800, background: "river", unlockedMaterial: "clay", signatureMechanic: "waterHazards" },
+  { name: "Plains", enemies: 15, boss: false, unlockIdle: "plantGathering", unlockables: ["boneGathering"], mapLength: 3000, spawnRate: 1600, background: "plains", unlockedMaterial: "fiber", signatureMechanic: "groupSpawning" },
+  { name: "Cave System", enemies: 18, boss: false, unlockIdle: "ritualStoneGathering", unlockables: ["ritualStoneGathering"], mapLength: 3200, spawnRate: 1700, background: "cave", unlockedMaterial: "sulfur", signatureMechanic: "darkness" },
+  { name: "Ancient Temple", enemies: 20, boss: true, unlockIdle: "advancedCrafting", unlockables: ["advancedCrafting", "weaponUpgrades"], mapLength: 3500, spawnRate: 1500, background: "temple", unlockedMaterial: "gold", signatureMechanic: "ritualPower" },
+  { name: "Shadow Realm", enemies: 25, boss: false, unlockIdle: null, unlockables: ["scrapGathering"], mapLength: 3800, spawnRate: 1400, background: "shadow", unlockedMaterial: "obsidian", signatureMechanic: "shadowClones" },
+  { name: "Magical Tower", enemies: 30, boss: false, unlockIdle: "powerfulUpgrades", unlockables: ["crystalGathering"], mapLength: 4200, spawnRate: 1300, background: "tower", unlockedMaterial: "essence", signatureMechanic: "manaSurges" },
+  { name: "Final Sanctum", enemies: 35, boss: true, unlockIdle: null, unlockables: [], mapLength: 5000, spawnRate: 1200, background: "sanctum", unlockedMaterial: "void", signatureMechanic: "voidCorruption" }
 ];
 
 // ASCII Art for characters
@@ -114,6 +188,71 @@ const enemyASCII = {
     " ████ ",
     " █  █ ",
     " ████ "
+  ],
+  "Wolf": [
+    "  w  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Dark Stalker": [
+    "  D  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Mountain Troll": [
+    "  T  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "River Serpent": [
+    "  S  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Plains Raider": [
+    "  R  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Cave Bat": [
+    "  B  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Temple Guardian": [
+    "  G  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Shadow Wraith": [
+    "  W  ",
+    " /~\\ ",
+    " / \\ "
+  ],
+  "Tower Mage": [
+    "  M  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Void Spawn": [
+    "  V  ",
+    " /∞\\ ",
+    " / \\ "
+  ],
+  "Forest Guardian": [
+    "  F  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Ancient Golem": [
+    "  A  ",
+    " /|\\ ",
+    " / \\ "
+  ],
+  "Void Lord": [
+    "  ∞  ",
+    " /∞\\ ",
+    " /∞\\ "
   ]
 };
 
@@ -233,10 +372,27 @@ function getAsciiForId(id, obj) {
 }
 
 const enemyTypes = [
-  { name: "Goblin", hp: 10, attack: 1, defense: 0, xp: 2, width: 30, height: 40, ascii: enemyASCII["Goblin"] },
-  { name: "Orc", hp: 20, attack: 2, defense: 1, xp: 5, width: 35, height: 45, ascii: enemyASCII["Orc"] },
-  { name: "Shadow", hp: 15, attack: 3, defense: 0, xp: 4, width: 25, height: 35, ascii: enemyASCII["Shadow"] },
-  { name: "Boss", hp: 100, attack: 5, defense: 2, xp: 20, width: 50, height: 60, ascii: enemyASCII["Boss"] }
+  // Generic enemies (can appear in any area)
+  { name: "Goblin", hp: 10, attack: 1, defense: 0, xp: 2, width: 30, height: 40, ascii: enemyASCII["Goblin"], areaSpecific: false },
+  { name: "Orc", hp: 20, attack: 2, defense: 1, xp: 5, width: 35, height: 45, ascii: enemyASCII["Orc"], areaSpecific: false },
+  { name: "Shadow", hp: 15, attack: 3, defense: 0, xp: 4, width: 25, height: 35, ascii: enemyASCII["Shadow"], areaSpecific: false },
+  
+  // Area-specific enemies
+  { name: "Wolf", hp: 12, attack: 2, defense: 0, xp: 3, width: 30, height: 40, ascii: enemyASCII["Wolf"], areaSpecific: true, areas: [0] },
+  { name: "Dark Stalker", hp: 18, attack: 3, defense: 1, xp: 4, width: 28, height: 38, ascii: enemyASCII["Dark Stalker"], areaSpecific: true, areas: [1] },
+  { name: "Mountain Troll", hp: 35, attack: 4, defense: 2, xp: 8, width: 40, height: 50, ascii: enemyASCII["Mountain Troll"], areaSpecific: true, areas: [2] },
+  { name: "River Serpent", hp: 22, attack: 3, defense: 0, xp: 5, width: 35, height: 45, ascii: enemyASCII["River Serpent"], areaSpecific: true, areas: [3] },
+  { name: "Plains Raider", hp: 25, attack: 4, defense: 1, xp: 6, width: 32, height: 42, ascii: enemyASCII["Plains Raider"], areaSpecific: true, areas: [4] },
+  { name: "Cave Bat", hp: 8, attack: 2, defense: 0, xp: 3, width: 20, height: 30, ascii: enemyASCII["Cave Bat"], areaSpecific: true, areas: [5] },
+  { name: "Temple Guardian", hp: 40, attack: 5, defense: 3, xp: 10, width: 45, height: 55, ascii: enemyASCII["Temple Guardian"], areaSpecific: true, areas: [6] },
+  { name: "Shadow Wraith", hp: 30, attack: 5, defense: 1, xp: 8, width: 30, height: 40, ascii: enemyASCII["Shadow Wraith"], areaSpecific: true, areas: [7] },
+  { name: "Tower Mage", hp: 35, attack: 6, defense: 2, xp: 9, width: 35, height: 45, ascii: enemyASCII["Tower Mage"], areaSpecific: true, areas: [8] },
+  { name: "Void Spawn", hp: 45, attack: 7, defense: 2, xp: 12, width: 40, height: 50, ascii: enemyASCII["Void Spawn"], areaSpecific: true, areas: [9] },
+  
+  // Bosses
+  { name: "Forest Guardian", hp: 120, attack: 6, defense: 3, xp: 30, width: 55, height: 65, ascii: enemyASCII["Forest Guardian"], isBoss: true, areas: [1] },
+  { name: "Ancient Golem", hp: 200, attack: 8, defense: 5, xp: 50, width: 60, height: 70, ascii: enemyASCII["Ancient Golem"], isBoss: true, areas: [6] },
+  { name: "Void Lord", hp: 300, attack: 10, defense: 6, xp: 100, width: 65, height: 75, ascii: enemyASCII["Void Lord"], isBoss: true, areas: [9] }
 ];
 
 const gatheringActions = [
@@ -305,6 +461,9 @@ const craftingRecipes = [
   { id: "healingPotion", name: "Healing Potion", cost: { plants: 2, water: 1 }, type: "consumable", effect: { hp: 10 }, description: "Restores 10 HP" },
   { id: "strongHealingPotion", name: "Strong Healing Potion", cost: { plants: 5, water: 3, crystal: 2 }, type: "consumable", effect: { hp: 25 }, description: "Restores 25 HP, made with crystals", unlock: "crystalGathering" },
   { id: "essencePotion", name: "Essence Potion", cost: { essence: 3, plants: 8, water: 5 }, type: "consumable", effect: { hp: 40 }, description: "Restores 40 HP with magical properties", unlock: "essenceGathering" },
+  { id: "strengthPotion", name: "Strength Potion", cost: { plants: 5, ore: 3, water: 2 }, type: "consumable", effect: { attack: 5, duration: 30 }, description: "Temporarily increases attack by 5 for 30 seconds", unlock: "oreGathering" },
+  { id: "defensePotion", name: "Defense Potion", cost: { plants: 5, stone: 5, water: 2 }, type: "consumable", effect: { defense: 3, duration: 30 }, description: "Temporarily increases defense by 3 for 30 seconds", unlock: null },
+  { id: "speedPotion", name: "Speed Potion", cost: { plants: 4, crystal: 2, water: 2 }, type: "consumable", effect: { speed: 0.2, duration: 20 }, description: "Temporarily increases movement and attack speed", unlock: "crystalGathering" },
   
   // Capacity Upgrades (items)
   { id: "backpack", name: "Backpack", cost: { wood: 8, hide: 5 }, type: "capacity", capacityBonus: 50, description: "Increases inventory capacity by 50" },
@@ -463,13 +622,25 @@ function removeFromInventory(itemId, qty = 1) {
 // Menu System
 function showScreen(screenId) {
   document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-  el(screenId).classList.remove('hidden');
+  const screen = document.getElementById(screenId);
+  if (screen) {
+    screen.classList.remove('hidden');
+  } else {
+    console.error(`[showScreen] Element with id "${screenId}" not found`);
+  }
 }
 
 // Idle Section
 function showIdleMenu(menuId) {
+  console.log('[DEBUG] showIdleMenu called with:', menuId);
   document.querySelectorAll('.menu-content').forEach(m => m.classList.add('hidden'));
-  el(menuId).classList.remove('hidden');
+  const menu = document.getElementById(menuId);
+  if (menu) {
+    menu.classList.remove('hidden');
+    console.log('[DEBUG] Menu shown:', menuId);
+  } else {
+    console.error(`[showIdleMenu] Element with id "${menuId}" not found`);
+  }
 }
 
 function refreshGatheringMenu() {
@@ -617,7 +788,7 @@ function processGatheringJobs() {
   }
   toComplete.forEach(id => {
     const action = gatheringActions.find(a => a.id === id);
-    if (action) {
+  if (action) {
       // Ensure any UI interval is cleared inside completeGatheringAction
       completeGatheringAction(action);
     } else {
@@ -633,6 +804,52 @@ function processGatheringJobs() {
 function refreshMagicMenu() {
   const container = el("magic-actions");
   container.innerHTML = "";
+
+  // Weapon Upgrade System (unlocked in Ancient Temple)
+  if (gameState.unlockedIdleFeatures.includes("weaponUpgrades")) {
+    container.innerHTML += '<h3>Weapon Upgrades</h3><div class="small">Upgrade your weapons to make them all viable at end-game. Each upgrade costs gold and essence.</div>';
+    
+    // Get all weapons from inventory
+    const weapons = [];
+    for (const [itemId, itemData] of Object.entries(gameState.inventory || {})) {
+      const item = itemData.item || itemData.obj;
+      if (item && item.type === "weapon" && item.weaponType !== "shield") {
+        weapons.push({ id: itemId, ...item, count: itemData.count || itemData.qty });
+      }
+    }
+    
+    if (weapons.length === 0) {
+      container.innerHTML += '<div class="small" style="margin-top:8px; color:#888;">No weapons in inventory to upgrade.</div>';
+    } else {
+      weapons.forEach(weapon => {
+        const upgradeLevel = weapon.upgradeLevel || 0;
+        const maxUpgrades = 3;
+        if (upgradeLevel >= maxUpgrades) {
+          container.innerHTML += `<div class="action-item"><div class="action-item-header"><div class="action-item-name">${weapon.name} (Maxed)</div></div><div class="action-item-description">Fully upgraded!</div></div>`;
+        } else {
+          const upgradeCost = { gold: 5 + (upgradeLevel * 3), essence: 2 + upgradeLevel };
+          const canAfford = canAfford(upgradeCost);
+          const costDisplay = Object.entries(upgradeCost).map(([r, a]) => `<span class="${canAfford ? 'have-resource' : 'lack-resource'}">${a} ${resourceDisplayNames[r] || r}</span>`).join(", ");
+          container.innerHTML += `
+            <div class="action-item">
+              <div class="action-item-header">
+                <div class="action-item-name">${weapon.name} (Level ${upgradeLevel + 1}/${maxUpgrades})</div>
+              </div>
+              <div class="action-item-description">
+                Upgrade Cost: ${costDisplay}<br>
+                Effect: +${2 + upgradeLevel} Attack, +${0.1 + (upgradeLevel * 0.05)} Speed
+              </div>
+              <button class="btn action-btn ${canAfford ? '' : 'disabled'}" ${canAfford ? '' : 'disabled'} onclick="upgradeWeapon('${weapon.id}')">
+                Upgrade
+              </button>
+            </div>
+          `;
+        }
+      });
+    }
+    
+    container.innerHTML += '<hr style="margin:16px 0; border-color:#333;">';
+  }
 
   // Ritual stone gathering (same as before, with reserved progress placeholder)
   const magicAction = gatheringActions.find(a => a.id === "gatherRitualStones");
@@ -1302,8 +1519,19 @@ function refreshInventory() {
 }
 
 function showAreaSelection() {
-  const overlay = el("area-selection-overlay");
-  const container = el("area-list");
+  console.log('[DEBUG] showAreaSelection called');
+  const overlay = document.getElementById("area-selection-overlay");
+  const container = document.getElementById("area-list");
+  
+  if (!overlay) {
+    console.error('[DEBUG] area-selection-overlay not found');
+    return;
+  }
+  if (!container) {
+    console.error('[DEBUG] area-list not found');
+    return;
+  }
+  
   container.innerHTML = "";
   
   gameState.unlockedAreas.forEach(areaIndex => {
@@ -1326,19 +1554,82 @@ function showAreaSelection() {
     
     container.appendChild(item);
     
-    const btn = el(`select-area-${areaIndex}`);
+    const btn = document.getElementById(`select-area-${areaIndex}`);
     if (btn) {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('[DEBUG] Area selected:', areaIndex);
         gameState.currentArea = areaIndex;
         overlay.classList.add("hidden");
-        el("idle-section").classList.add("hidden");
-        el("combat-section").classList.remove("hidden");
-        startRPG();
+        const idleSection = document.getElementById("idle-section");
+        const combatSection = document.getElementById("combat-section");
+        if (idleSection) idleSection.classList.add("hidden");
+        if (combatSection) combatSection.classList.remove("hidden");
+        if (typeof startRPG === 'function') {
+          startRPG();
+        } else {
+          console.error('[DEBUG] startRPG function not available');
+        }
       });
+    } else {
+      console.warn(`[DEBUG] Button select-area-${areaIndex} not found after creation`);
     }
   });
   
   overlay.classList.remove("hidden");
+  console.log('[DEBUG] Area selection overlay shown');
+}
+
+function upgradeWeapon(itemId) {
+  if (!gameState.inventory[itemId]) {
+    addLog("Weapon not found in inventory");
+    return;
+  }
+  
+  const itemData = gameState.inventory[itemId];
+  const weapon = itemData.item || itemData.obj;
+  if (!weapon) {
+    addLog("Weapon not found in inventory");
+    return;
+  }
+  const upgradeLevel = weapon.upgradeLevel || 0;
+  const maxUpgrades = 3;
+  
+  if (upgradeLevel >= maxUpgrades) {
+    addLog(`${weapon.name} is already fully upgraded!`);
+    return;
+  }
+  
+  const upgradeCost = { gold: 5 + (upgradeLevel * 3), essence: 2 + upgradeLevel };
+  if (!canAfford(upgradeCost)) {
+    addLog("Cannot afford upgrade cost");
+    return;
+  }
+  
+  payCost(upgradeCost);
+  
+  // Apply upgrade
+  weapon.upgradeLevel = (weapon.upgradeLevel || 0) + 1;
+  weapon.stats = weapon.stats || {};
+  weapon.stats.attack = (weapon.stats.attack || 0) + (2 + upgradeLevel);
+  weapon.stats.speed = (weapon.stats.speed || 1) + (0.1 + (upgradeLevel * 0.05));
+  
+  // Update inventory item
+  if (itemData.item) itemData.item = weapon;
+  if (itemData.obj) itemData.obj = weapon;
+  
+  // Update equipped weapon if it's the same item
+  if (gameState.equipped.weapon && (gameState.equipped.weapon.id === itemId || gameState.equipped.weapon.id === weapon.id)) {
+    gameState.equipped.weapon = weapon;
+    gameState.equipped.weapon.id = itemId;
+  }
+  
+  addLog(`Upgraded ${weapon.name} to level ${weapon.upgradeLevel}!`);
+  refreshStats();
+  refreshMagicMenu();
+  refreshInventory();
+  try { saveGame(); } catch (e) {}
 }
 
 function useInventoryItem(itemId, item) {
@@ -1396,57 +1687,185 @@ let gameCanvas, ctx;
 let animationFrameId;
 
 function initRPG() {
-  gameCanvas = el("game-canvas");
-  ctx = gameCanvas.getContext("2d");
+  console.log('[DEBUG] initRPG called');
+  gameCanvas = document.getElementById("game-canvas");
+  if (gameCanvas) {
+    ctx = gameCanvas.getContext("2d");
+    console.log('[DEBUG] Canvas initialized successfully');
+  } else {
+    console.error('[DEBUG] game-canvas element not found');
+  }
 }
 
 function startRPG() {
-  if (gameState.combat.active) return;
+  console.log('[DEBUG] startRPG called');
+  if (gameState.combat.active) {
+    console.log('[DEBUG] Combat already active, returning');
+    return;
+  }
   
-  gameState.combat.active = true;
-  gameState.combat.paused = false;
-  gameState.combat.enemies = [];
-  gameState.combat.playerX = 50; // Fixed screen position
-  gameState.combat.scrollX = 0;
-  gameState.combat.lastFrame = Date.now();
-  gameState.combat.lastEnemyDamage = 0;
-  gameState.combat.mapProgress = 0; // Track how far through the map
-  gameState.combat.spawnedEnemiesCount = 0; // Count of spawned enemies
-  gameState.combat.spawnIntervalId = null;
-  
-  const area = areas[gameState.currentArea];
-  el("area-name").textContent = area.name;
-  
-  // Spawn first enemy
-  spawnSingleEnemy();
-  
-  // Start enemy spawn timer
-  startEnemySpawner();
-  
-  // Start game loop
-  gameLoop();
-  
-  addLog(`Entered ${area.name} - Reach the end to victory!`);
+  try {
+    gameState.combat.active = true;
+    gameState.combat.paused = false;
+    gameState.combat.enemies = [];
+    gameState.combat.projectiles = [];
+    gameState.combat.playerX = 50; // Fixed screen position
+    gameState.combat.scrollX = 0;
+    gameState.combat.lastFrame = Date.now();
+    gameState.combat.lastEnemyDamage = 0;
+    gameState.combat.mapProgress = 0; // Track how far through the map
+    gameState.combat.spawnedEnemiesCount = 0; // Count of spawned enemies
+    gameState.combat.spawnIntervalId = null;
+    
+    // Initialize area signature mechanics
+    gameState.combat.areaMechanic = {
+      lastTick: Date.now(),
+      ritualPowerBuff: 0,
+      lastManaSurge: 0,
+      shadowCloneTimer: 0,
+      waterHazardTimer: 0,
+      voidCorruptionTimer: 0
+    };
+    
+    // Initialize weapon mechanics
+    gameState.combat.weaponMechanics = {
+      swordCombo: 0,
+      swordComboTimer: 0,
+      lastCrit: 0,
+      lastStagger: 0,
+      lastBlock: 0
+    };
+    
+    const area = areas[gameState.currentArea];
+    const areaNameEl = document.getElementById("area-name");
+    if (areaNameEl) {
+      areaNameEl.textContent = area.name;
+    } else {
+      console.warn('[DEBUG] area-name element not found');
+    }
+    
+    // Ensure combat section is visible and idle section is hidden
+    const combatSection = document.getElementById("combat-section");
+    const idleSection = document.getElementById("idle-section");
+    if (combatSection) {
+      combatSection.classList.remove("hidden");
+    } else {
+      console.error('[DEBUG] combat-section not found');
+    }
+    if (idleSection) {
+      idleSection.classList.add("hidden");
+    } else {
+      console.warn('[DEBUG] idle-section not found');
+    }
+    
+    // Check if canvas is initialized
+    if (!ctx) {
+      console.error('[DEBUG] Canvas context not initialized, initializing now');
+      if (gameCanvas) {
+        ctx = gameCanvas.getContext("2d");
+      } else {
+        gameCanvas = document.getElementById("game-canvas");
+        if (gameCanvas) {
+          ctx = gameCanvas.getContext("2d");
+        } else {
+          console.error('[DEBUG] Cannot initialize canvas - game-canvas element not found');
+          throw new Error('Canvas not available');
+        }
+      }
+    }
+    
+    // Spawn first enemy
+    if (typeof spawnSingleEnemy === 'function') {
+      spawnSingleEnemy();
+    } else {
+      console.error('[DEBUG] spawnSingleEnemy function not available');
+    }
+    
+    // Start enemy spawn timer
+    if (typeof startEnemySpawner === 'function') {
+      startEnemySpawner();
+    } else {
+      console.error('[DEBUG] startEnemySpawner function not available');
+    }
+    
+    // Start game loop
+    if (typeof gameLoop === 'function') {
+      gameLoop();
+    } else {
+      console.error('[DEBUG] gameLoop function not available');
+    }
+    
+    // Start ASCII animation if available
+    try {
+      if (typeof startAsciiAnimation === 'function') {
+        startAsciiAnimation();
+      }
+    } catch (e) {
+      console.warn('[DEBUG] Could not start ASCII animation:', e);
+    }
+    
+    if (typeof addLog === 'function') {
+      addLog(`Entered ${area.name} - Reach the end to victory!`);
+    }
+    
+    console.log('[DEBUG] startRPG completed successfully');
+  } catch (error) {
+    console.error('[DEBUG] Error in startRPG:', error);
+    gameState.combat.active = false;
+    // Don't redirect to main menu on error, just log it
+  }
 }
 
 function spawnSingleEnemy() {
   const area = areas[gameState.currentArea];
   const isBoss = area.boss && gameState.combat.spawnedEnemiesCount === area.enemies - 1;
-  const enemyType = isBoss ? enemyTypes[3] : enemyTypes[Math.floor(Math.random() * 3)];
   
-  gameState.combat.enemies.push({
-    ...enemyType,
-    ascii: enemyType.ascii.slice(),
-    x: 800 + (gameState.combat.spawnedEnemiesCount * 250) + Math.random() * 100,
-    y: 300,
-    maxHp: enemyType.hp,
-    hp: enemyType.hp,
-    lastDamage: 0,
-    animFrame: 0,
-    effects: {} // active status effects (poison, bleed, freeze, weaken) mapped to timers/values
-  });
+  let enemyType;
+  if (isBoss) {
+    // Find boss for this area
+    enemyType = enemyTypes.find(e => e.isBoss && e.areas && e.areas.includes(gameState.currentArea)) || enemyTypes.find(e => e.isBoss) || enemyTypes[3];
+  } else {
+    // Get area-specific enemies or fall back to generic
+    const areaEnemies = enemyTypes.filter(e => !e.isBoss && (e.areaSpecific === false || (e.areas && e.areas.includes(gameState.currentArea))));
+    if (areaEnemies.length > 0) {
+      // 60% chance for area-specific, 40% for generic
+      const genericEnemies = areaEnemies.filter(e => !e.areaSpecific);
+      const specificEnemies = areaEnemies.filter(e => e.areaSpecific);
+      if (specificEnemies.length > 0 && Math.random() < 0.6) {
+        enemyType = specificEnemies[Math.floor(Math.random() * specificEnemies.length)];
+      } else if (genericEnemies.length > 0) {
+        enemyType = genericEnemies[Math.floor(Math.random() * genericEnemies.length)];
+      } else {
+        enemyType = specificEnemies[Math.floor(Math.random() * specificEnemies.length)];
+      }
+    } else {
+      // Fallback to generic enemies
+      const genericEnemies = enemyTypes.filter(e => !e.isBoss && !e.areaSpecific);
+      enemyType = genericEnemies[Math.floor(Math.random() * genericEnemies.length)] || enemyTypes[0];
+    }
+  }
   
-  gameState.combat.spawnedEnemiesCount++;
+  // Handle group spawning for Plains area
+  let spawnCount = 1;
+  if (area.signatureMechanic === "groupSpawning" && !isBoss && Math.random() < 0.3) {
+    spawnCount = 2 + Math.floor(Math.random() * 2); // 2-3 enemies
+  }
+  
+  for (let i = 0; i < spawnCount; i++) {
+    gameState.combat.enemies.push({
+      ...enemyType,
+      ascii: enemyType.ascii.slice(),
+      x: 800 + (gameState.combat.spawnedEnemiesCount * 250) + Math.random() * 100 + (i * 50),
+      y: 300 + (Math.random() * 40 - 20),
+      maxHp: enemyType.hp,
+      hp: enemyType.hp,
+      lastDamage: 0,
+      animFrame: 0,
+      effects: {} // active status effects (poison, bleed, freeze, weaken) mapped to timers/values
+    });
+  }
+  
+  gameState.combat.spawnedEnemiesCount += spawnCount;
   gameState.combat.enemies.sort((a, b) => a.x - b.x);
 }
 
@@ -1459,7 +1878,10 @@ function showConfirm(message, onYes) {
     modal.className = 'confirm-modal hidden';
     modal.innerHTML = `<div class="confirm-inner"><div id="confirm-msg"></div><div class="confirm-actions"><button id="confirm-yes" class="btn">Yes</button><button id="confirm-no" class="btn">No</button></div></div>`;
     document.body.appendChild(modal);
-    el('confirm-no').addEventListener('click', () => { modal.classList.add('hidden'); });
+    const confirmNo = document.getElementById('confirm-no');
+    if (confirmNo) {
+      confirmNo.addEventListener('click', () => { modal.classList.add('hidden'); });
+    }
   }
   el('confirm-msg').textContent = message;
   modal.classList.remove('hidden');
@@ -1531,6 +1953,8 @@ if (typeof window !== 'undefined') {
 }
 
 function startEnemySpawner() {
+  // Clear projectiles at the start of combat
+  gameState.combat.projectiles = [];
   const area = areas[gameState.currentArea];
   gameState.combat.spawnIntervalId = setInterval(() => {
     if (!gameState.combat.active || gameState.combat.paused) return;
@@ -1553,6 +1977,101 @@ function gameLoop() {
   const now = Date.now();
   const deltaTime = (now - gameState.combat.lastFrame) / 1000;
   gameState.combat.lastFrame = now;
+  
+  // Process area signature mechanics
+  const currentArea = areas[gameState.currentArea];
+  if (currentArea && currentArea.signatureMechanic && gameState.combat.areaMechanic) {
+    const mechanic = gameState.combat.areaMechanic;
+    
+    switch (currentArea.signatureMechanic) {
+      case "lowVisibility":
+        // Dark Woods: Enemies are harder to see, slower spawn rate
+        // Already handled in spawn rate
+        break;
+        
+      case "windResistance":
+        // Mountain Trail: Player moves slower (handled in scroll section)
+        break;
+        
+      case "waterHazards":
+        // River Crossing: Periodic water damage
+        mechanic.waterHazardTimer = (mechanic.waterHazardTimer || 0) + deltaTime;
+        if (mechanic.waterHazardTimer >= 3) {
+          const damage = 2;
+          gameState.player.hp -= damage;
+          if (gameState.combat.floatingTexts) {
+            gameState.combat.floatingTexts.push({ x: gameState.combat.playerX, y: 280, text: `-${damage}`, ttl: 1.0, alpha: 1, color: '#6ef' });
+          }
+          mechanic.waterHazardTimer = 0;
+        }
+        break;
+        
+      case "groupSpawning":
+        // Plains: Already handled in spawnSingleEnemy
+        break;
+        
+      case "darkness":
+        // Cave System: Enemies have higher defense
+        // Handled in enemy stats
+        break;
+        
+      case "ritualPower":
+        // Ancient Temple: Periodic buffs
+        mechanic.ritualPowerBuff = (mechanic.ritualPowerBuff || 0) + deltaTime;
+        if (mechanic.ritualPowerBuff >= 5) {
+          const buff = 2;
+          gameState.player.attack += buff;
+          if (gameState.combat.floatingTexts) {
+            gameState.combat.floatingTexts.push({ x: gameState.combat.playerX, y: 280, text: `+${buff} ATK`, ttl: 2.0, alpha: 1, color: '#ffd700' });
+          }
+          mechanic.ritualPowerBuff = 0;
+          setTimeout(() => { gameState.player.attack = Math.max(2, gameState.player.attack - buff); }, 10000);
+        }
+        break;
+        
+      case "shadowClones":
+        // Shadow Realm: Enemies occasionally spawn duplicates
+        mechanic.shadowCloneTimer = (mechanic.shadowCloneTimer || 0) + deltaTime;
+        if (mechanic.shadowCloneTimer >= 8 && gameState.combat.enemies.length > 0) {
+          const randomEnemy = gameState.combat.enemies[Math.floor(Math.random() * gameState.combat.enemies.length)];
+          if (randomEnemy && !randomEnemy.isClone) {
+            gameState.combat.enemies.push({
+              ...randomEnemy,
+              isClone: true,
+              hp: randomEnemy.hp * 0.5,
+              maxHp: randomEnemy.maxHp * 0.5,
+              x: randomEnemy.x + 100,
+              effects: {}
+            });
+            mechanic.shadowCloneTimer = 0;
+          }
+        }
+        break;
+        
+      case "manaSurges":
+        // Magical Tower: Periodic damage bursts
+        mechanic.lastManaSurge = (mechanic.lastManaSurge || 0) + deltaTime;
+        if (mechanic.lastManaSurge >= 4) {
+          const surgeDamage = 3;
+          gameState.player.hp -= surgeDamage;
+          if (gameState.combat.floatingTexts) {
+            gameState.combat.floatingTexts.push({ x: gameState.combat.playerX, y: 280, text: `-${surgeDamage}`, ttl: 1.0, alpha: 1, color: '#f6f' });
+          }
+          mechanic.lastManaSurge = 0;
+        }
+        break;
+        
+      case "voidCorruption":
+        // Final Sanctum: Gradual HP drain, but enemies are weaker
+        mechanic.voidCorruptionTimer = (mechanic.voidCorruptionTimer || 0) + deltaTime;
+        if (mechanic.voidCorruptionTimer >= 2) {
+          const drain = 0.5;
+          gameState.player.hp -= drain * deltaTime;
+          mechanic.voidCorruptionTimer = 0;
+        }
+        break;
+    }
+  }
   
   // Check if player is colliding with any enemy
   let isColliding = false;
@@ -1577,7 +2096,7 @@ function gameLoop() {
     
     if (checkCollision(playerRect, enemyRect)) {
       isColliding = true;
-      if (!blockingEnemy || enemyScreenX < blockingEnemy.x) {
+      if (!blockingEnemy || enemyScreenX < blockingEnemy.screenX) {
         blockingEnemy = { enemy, index, screenX: enemyScreenX };
       }
     }
@@ -1585,7 +2104,12 @@ function gameLoop() {
   
   // Only scroll if not colliding with an enemy
   if (!isColliding) {
-    gameState.combat.scrollX += 50 * deltaTime;
+    // Wind resistance mechanic - player moves slower
+    if (currentArea && currentArea.signatureMechanic === "windResistance") {
+      gameState.combat.scrollX += 30 * deltaTime; // Reduced from 50
+    } else {
+      gameState.combat.scrollX += 50 * deltaTime;
+    }
     gameState.combat.mapProgress = gameState.combat.scrollX;
   }
   
@@ -1661,10 +2185,37 @@ function gameLoop() {
         
         if (dist < 20 && !proj.hit) {
           // Hit!
-          proj.hit = true;
           const weaponDamage = (proj.weapon && proj.weapon.stats) ? proj.weapon.stats.attack || 1 : 1;
           const damage = Math.max(1, weaponDamage - enemy.defense * 0.5);
           enemy.hp -= damage;
+          
+          // Bow piercing: can hit multiple enemies
+          if (proj.weapon && proj.weapon.weaponType === "bow" && !proj.hit) {
+            // Check for additional enemies in line
+            for (let k = j + 1; k < gameState.combat.enemies.length; k++) {
+              const nextEnemy = gameState.combat.enemies[k];
+              const nextEx = nextEnemy.x - gameState.combat.scrollX;
+              const nextEy = nextEnemy.y + 10;
+              const nextDist = Math.sqrt(Math.pow(proj.x - nextEx, 2) + Math.pow(proj.y - nextEy, 2));
+              if (nextDist < 30) {
+                const nextDamage = Math.max(1, weaponDamage * 0.7 - nextEnemy.defense * 0.5); // 70% damage to second enemy
+                nextEnemy.hp -= nextDamage;
+                if (gameState.combat.floatingTexts) {
+                  gameState.combat.floatingTexts.push({
+                    x: nextEx,
+                    y: nextEnemy.y - 20,
+                    text: `-${Math.ceil(nextDamage)}`,
+                    ttl: 1.0,
+                    alpha: 1,
+                    color: '#f88'
+                  });
+                }
+                break;
+              }
+            }
+          }
+          
+          proj.hit = true;
           
           // Floating text
           if (gameState.combat.floatingTexts) {
@@ -1714,87 +2265,204 @@ function gameLoop() {
   }
 
   if (blockingEnemy) {
-    const { enemy, index } = blockingEnemy;
+    const { enemy: blockingEnemyRef, index: blockingIndex } = blockingEnemy;
+    // Find the actual enemy in the array to ensure we're modifying the correct object
+    // Try to find by reference first, then by index, then fall back to the reference
+    let enemy = gameState.combat.enemies.find(e => e === blockingEnemyRef);
+    if (!enemy && blockingIndex >= 0 && blockingIndex < gameState.combat.enemies.length) {
+      enemy = gameState.combat.enemies[blockingIndex];
+    }
+    if (!enemy) {
+      enemy = blockingEnemyRef; // Fall back to original reference
+    }
     
-    // Ranged weapon: spawn projectiles toward target
-    const equipped = gameState.equipped.weapon;
-    if (equipped && equipped.weaponType === "bow" && equipped.stats.range) {
-      // Fire projectiles at intervals based on weapon speed
-      const fireRate = 0.5 / equipped.stats.speed; // seconds between shots
-      if (!enemy.lastProjectileFire) enemy.lastProjectileFire = Date.now();
-      const timeSinceFire = (Date.now() - enemy.lastProjectileFire) / 1000;
-      
-      if (timeSinceFire > fireRate) {
-        // Spawn projectile from player toward enemy
-        gameState.combat.projectiles = gameState.combat.projectiles || [];
-        const projectileAscii = itemAsciiArt[equipped.projectile] || itemAsciiArt.projectile_arrow;
-        gameState.combat.projectiles.push({
-          x: gameState.combat.playerX + 20,
-          y: 310,
-          targetX: enemy.x - gameState.combat.scrollX,
-          targetY: enemy.y + 10,
-          vx: (enemy.x - gameState.combat.scrollX - gameState.combat.playerX) * 2,
-          vy: (enemy.y + 10 - 310) * 1.5,
-          damage: (equipped.stats.attack || 1) * (equipped.stats.speed || 1),
-          ascii: projectileAscii,
-          hit: false,
-          weapon: equipped
-        });
-        enemy.lastProjectileFire = Date.now();
-        
-        // Add recoil particle effect
-        if (gameState.combat.particles) {
-          gameState.combat.particles.push({
-            x: gameState.combat.playerX + 5,
-            y: 315,
-            vx: -30,
-            vy: 10,
-            life: 0.3,
-            maxLife: 0.3,
-            color: '#6ef',
-            size: 2
+    // Get the current index of the enemy in the array
+    const index = gameState.combat.enemies.indexOf(enemy);
+    
+    // Only proceed if enemy exists in the array
+    if (index !== -1 && enemy) {
+      // Get the enemy from the array directly to ensure we're working with the correct object
+      const arrayEnemy = gameState.combat.enemies[index];
+      if (!arrayEnemy) {
+        // Enemy not found in array, skip combat logic for this enemy
+      } else {
+        // Ranged weapon: spawn projectiles toward the nearest enemy within range
+        const equipped = gameState.equipped.weapon;
+        if (equipped && equipped.weaponType === "bow" && equipped.stats.range) {
+          // Fire projectiles at intervals based on weapon speed
+          const fireRate = 0.5 / (equipped.stats.speed || 1); // seconds between shots
+          if (!gameState.combat.lastPlayerProjectile) gameState.combat.lastPlayerProjectile = 0;
+          const timeSinceFire = (Date.now() - gameState.combat.lastPlayerProjectile) / 1000;
+
+          if (timeSinceFire > fireRate) {
+        // find nearest enemy within weapon range (measured from player screen position)
+        const spawnX = gameState.combat.playerX + 20;
+        const spawnY = 310;
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (let k = 0; k < gameState.combat.enemies.length; k++) {
+          const e = gameState.combat.enemies[k];
+          const ex = e.x - gameState.combat.scrollX;
+          const ey = e.y + 10;
+          const dx = ex - spawnX;
+          const dy = ey - spawnY;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d <= (equipped.stats.range || 0) && d < nearestDist) {
+            nearestDist = d;
+            nearest = e;
+          }
+        }
+
+        if (nearest) {
+          // Spawn projectile toward the selected enemy
+          gameState.combat.projectiles = gameState.combat.projectiles || [];
+          const projectileAscii = itemAsciiArt[equipped.projectile] || itemAsciiArt.projectile_arrow;
+          const targetScreenX = nearest.x - gameState.combat.scrollX;
+          const targetScreenY = nearest.y + 10;
+          let dx = targetScreenX - spawnX;
+          let dy = targetScreenY - spawnY;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+          if (!isFinite(dist) || dist < 1) dist = 1; // avoid division by zero
+          // base speed in pixels per second (tweakable). Use weapon range to scale slightly.
+          const baseSpeed = Math.min(1000, Math.max(300, (equipped.stats.range || 300) * 1.2));
+          const vx = (dx / dist) * baseSpeed;
+          const vy = (dy / dist) * baseSpeed;
+
+          gameState.combat.projectiles.push({
+            x: spawnX,
+            y: spawnY,
+            targetX: targetScreenX,
+            targetY: targetScreenY,
+            vx,
+            vy,
+            damage: Math.max(1, (equipped.stats.attack || 1) * (equipped.stats.speed || 1)),
+            ascii: projectileAscii,
+            hit: false,
+            weapon: equipped
           });
+          gameState.combat.lastPlayerProjectile = Date.now();
+
+          // Add recoil particle effect
+            if (gameState.combat.particles) {
+              gameState.combat.particles.push({
+                x: gameState.combat.playerX + 5,
+                y: 315,
+                vx: -30,
+                vy: 10,
+                life: 0.3,
+                maxLife: 0.3,
+                color: '#6ef',
+                size: 2
+              });
+            }
+          }
         }
       }
-    }
-    
-    // Melee weapon: deal damage directly
-    if (!equipped || equipped.weaponType !== "bow") {
-      // Deal damage to enemy continuously while touching
-      const baseAttack = gameState.player.attack + (equipped ? (equipped.stats.attack || 0) : 0);
-      const speedMult = equipped ? (equipped.stats.speed || 1) : 1;
+      
+      // Melee weapon: deal damage directly
+      if (!equipped || equipped.weaponType !== "bow") {
+        // Debug: confirm we're in the melee damage block
+        if (!gameState.combat._meleeBlockLogged) {
+          console.log('[DEBUG] Entering melee damage block. equipped:', equipped, 'weaponType:', equipped?.weaponType);
+          gameState.combat._meleeBlockLogged = true;
+        }
+        
+        // Deal damage to enemy continuously while touching
+        // arrayEnemy is already defined above
+        
+        const baseAttack = gameState.player.attack + (equipped ? (equipped.stats.attack || 0) : 0);
+        let speedMult = equipped ? (equipped.stats.speed || 1) : 1;
+        if (gameState.player.speedBuff) speedMult += gameState.player.speedBuff;
+        let damageMultiplier = 1;
 
-      // Apply weaken effect on enemy (temporary defense reduction)
-      const weakenReduction = enemy.effects && enemy.effects.weaken ? (enemy.effects.weaken.defenseReduction || 0) : 0;
+        // Weapon signature mechanics
+        if (equipped && gameState.combat.weaponMechanics) {
+          const wm = gameState.combat.weaponMechanics;
+          
+          if (equipped.weaponType === "sword") {
+            // Swords: Combo system - damage increases with consecutive hits
+            wm.swordComboTimer = (wm.swordComboTimer || 0) + deltaTime;
+            if (wm.swordComboTimer > 2) {
+              wm.swordCombo = 0; // Reset combo if too much time passes
+            }
+            wm.swordCombo = (wm.swordCombo || 0) + 1;
+            wm.swordComboTimer = 0;
+            damageMultiplier = 1 + (wm.swordCombo * 0.05); // 5% per combo stack, max 50% at 10 stacks
+            if (wm.swordCombo > 10) wm.swordCombo = 10;
+          } else if (equipped.weaponType === "shortsword") {
+            // Shortswords: Critical hits - chance for double damage
+            if (Math.random() < 0.15) { // 15% crit chance
+              damageMultiplier = 2;
+              if (gameState.combat.floatingTexts) {
+                gameState.combat.floatingTexts.push({ x: arrayEnemy.x - gameState.combat.scrollX, y: arrayEnemy.y - 20, text: "CRIT!", ttl: 1.0, alpha: 1, color: '#ffd700' });
+              }
+            }
+          } else if (equipped.weaponType === "bow") {
+            // Bows: Piercing - can hit multiple enemies (handled in projectile collision)
+            // No special multiplier needed here
+          } else if (equipped.weaponType === "heavy") {
+            // Heavy: Stagger - chance to stun enemies briefly
+            if (Math.random() < 0.25) { // 25% stagger chance
+              arrayEnemy.effects = arrayEnemy.effects || {};
+              arrayEnemy.effects.stagger = { timer: 1.0 };
+              damageMultiplier = 1.2; // 20% bonus damage on stagger
+            }
+          }
+        }
 
-      const playerDPS = Math.max(1, (baseAttack * speedMult) - Math.max(0, enemy.defense - weakenReduction));
-      const damageDealt = playerDPS * deltaTime;
-      enemy.hp -= damageDealt;
+        // Apply weaken effect on enemy (temporary defense reduction)
+        const weakenReduction = arrayEnemy.effects && arrayEnemy.effects.weaken ? (arrayEnemy.effects.weaken.defenseReduction || 0) : 0;
 
-      // Apply life steal if weapon has it
-      if (equipped && equipped.effect && equipped.effect.lifeSteal && equipped.effect.lifeSteal.percent) {
-        const heal = damageDealt * (equipped.effect.lifeSteal.percent || 0);
-        gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + heal);
-        // floating heal text
-        if (heal > 0.01 && gameState.combat.floatingTexts) {
-          gameState.combat.floatingTexts.push({ x: gameState.combat.playerX, y: 280, text: `+${Math.ceil(heal)}`, ttl: 0.9, alpha: 1, color: '#8f8' });
+        const playerDPS = Math.max(1, (baseAttack * speedMult * damageMultiplier) - Math.max(0, arrayEnemy.defense - weakenReduction));
+        const damageDealt = playerDPS * deltaTime;
+        
+        // Debug: log first time to see what's happening
+        if (!gameState.combat._damageDebugLogged) {
+          console.log('[DEBUG] Damage calc - baseAttack:', baseAttack, 'speedMult:', speedMult, 'enemy.defense:', arrayEnemy.defense, 'weakenReduction:', weakenReduction, 'playerDPS:', playerDPS, 'deltaTime:', deltaTime, 'damageDealt:', damageDealt);
+          gameState.combat._damageDebugLogged = true;
+        }
+        
+        // Always apply damage if enemy is alive and damage is positive
+        if (arrayEnemy.hp > 0 && damageDealt > 0) {
+          const oldHp = arrayEnemy.hp;
+          arrayEnemy.hp = Math.max(0, arrayEnemy.hp - damageDealt);
+          // Update the local enemy variable for consistency
+          enemy.hp = arrayEnemy.hp;
+          // Debug: log damage occasionally to verify it's working
+          if (Math.random() < 0.1) { // 10% chance to log
+            console.log('[DEBUG] Dealing damage:', damageDealt.toFixed(4), 'DPS:', playerDPS.toFixed(2), 'enemy HP:', oldHp.toFixed(2), '->', arrayEnemy.hp.toFixed(2));
+          }
+        } else {
+          if (Math.random() < 0.05) {
+            console.log('[DEBUG] No damage. damageDealt:', damageDealt, 'enemy.hp:', arrayEnemy?.hp, 'playerDPS:', playerDPS);
+          }
+        }
+
+        // Apply life steal if weapon has it
+        if (equipped && equipped.effect && equipped.effect.lifeSteal && equipped.effect.lifeSteal.percent) {
+          const heal = damageDealt * (equipped.effect.lifeSteal.percent || 0);
+          gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + heal);
+          // floating heal text
+          if (heal > 0.01 && gameState.combat.floatingTexts) {
+            gameState.combat.floatingTexts.push({ x: gameState.combat.playerX, y: 280, text: `+${Math.ceil(heal)}`, ttl: 0.9, alpha: 1, color: '#8f8' });
+          }
         }
       }
-    }
-
+      
       // Apply on-hit status effects from equipped weapon (poison, bleed, freeze, weaken)
+      // This applies to both melee and ranged weapons when they hit
       if (equipped && equipped.effect) {
         // Poison
         if (equipped.effect.poison) {
           const p = equipped.effect.poison;
-          enemy.effects = enemy.effects || {};
-          enemy.effects.poison = { timer: p.duration || 3, dmg: p.dmg || 1 };
+          arrayEnemy.effects = arrayEnemy.effects || {};
+          arrayEnemy.effects.poison = { timer: p.duration || 3, dmg: p.dmg || 1 };
           // spawn particle
           if (gameState.combat.particles) {
             for (let x = 0; x < 3; x++) {
               gameState.combat.particles.push({
-                x: enemy.x - gameState.combat.scrollX + Math.random() * 20 - 10,
-                y: enemy.y + Math.random() * 20,
+                x: arrayEnemy.x - gameState.combat.scrollX + Math.random() * 20 - 10,
+                y: arrayEnemy.y + Math.random() * 20,
                 vx: (Math.random() - 0.5) * 50,
                 vy: Math.random() * 20 - 10,
                 life: 0.6,
@@ -1808,13 +2476,13 @@ function gameLoop() {
         // Bleed
         if (equipped.effect.bleed) {
           const b = equipped.effect.bleed;
-          enemy.effects = enemy.effects || {};
-          enemy.effects.bleed = { timer: b.duration || 4, dmg: b.dmg || 2 };
+          arrayEnemy.effects = arrayEnemy.effects || {};
+          arrayEnemy.effects.bleed = { timer: b.duration || 4, dmg: b.dmg || 2 };
           if (gameState.combat.particles) {
             for (let x = 0; x < 2; x++) {
               gameState.combat.particles.push({
-                x: enemy.x - gameState.combat.scrollX,
-                y: enemy.y - 5,
+                x: arrayEnemy.x - gameState.combat.scrollX,
+                y: arrayEnemy.y - 5,
                 vx: Math.random() * 30 - 15,
                 vy: -Math.random() * 30,
                 life: 0.8,
@@ -1828,13 +2496,13 @@ function gameLoop() {
         // Freeze (chance)
         if (equipped.effect.freeze && Math.random() < (equipped.effect.freeze.chance || 0)) {
           const f = equipped.effect.freeze;
-          enemy.effects = enemy.effects || {};
-          enemy.effects.freeze = { timer: f.duration || 1.5, slowFactor: 0.5 };
+          arrayEnemy.effects = arrayEnemy.effects || {};
+          arrayEnemy.effects.freeze = { timer: f.duration || 1.5, slowFactor: 0.5 };
           if (gameState.combat.particles) {
             for (let x = 0; x < 4; x++) {
               gameState.combat.particles.push({
-                x: enemy.x - gameState.combat.scrollX + Math.random() * 25 - 12,
-                y: enemy.y + Math.random() * 20,
+                x: arrayEnemy.x - gameState.combat.scrollX + Math.random() * 25 - 12,
+                y: arrayEnemy.y + Math.random() * 20,
                 vx: (Math.random() - 0.5) * 40,
                 vy: Math.random() * 15 - 8,
                 life: 1.0,
@@ -1848,13 +2516,13 @@ function gameLoop() {
         // Weaken (chance)
         if (equipped.effect.weaken && Math.random() < (equipped.effect.weaken.chance || 0)) {
           const w = equipped.effect.weaken;
-          enemy.effects = enemy.effects || {};
-          enemy.effects.weaken = { timer: w.duration || 3, defenseReduction: w.defenseReduction || 1 };
+          arrayEnemy.effects = arrayEnemy.effects || {};
+          arrayEnemy.effects.weaken = { timer: w.duration || 3, defenseReduction: w.defenseReduction || 1 };
           if (gameState.combat.particles) {
             for (let x = 0; x < 2; x++) {
               gameState.combat.particles.push({
-                x: enemy.x - gameState.combat.scrollX,
-                y: enemy.y - 10,
+                x: arrayEnemy.x - gameState.combat.scrollX,
+                y: arrayEnemy.y - 10,
                 vx: Math.random() * 40 - 20,
                 vy: -Math.random() * 20,
                 life: 0.7,
@@ -1865,36 +2533,62 @@ function gameLoop() {
             }
           }
         }
-      }    if (enemy.hp <= 0) {
-      const xpGained = enemy.xp;
-      addXP(xpGained);
-      addLog(`Defeated ${enemy.name} (+${xpGained} XP)`);
-      refreshStats(); // Update stats to show XP gain
-      gameState.combat.enemies.splice(index, 1);
+      }
       
-      // Check if all enemies defeated
-      if (gameState.combat.enemies.length === 0) {
-        completeArea();
+      if (arrayEnemy.hp <= 0) {
+        const xpGained = arrayEnemy.xp;
+        addXP(xpGained);
+        addLog(`Defeated ${arrayEnemy.name} (+${xpGained} XP)`);
+        refreshStats(); // Update stats to show XP gain
+        gameState.combat.enemies.splice(index, 1);
+        
+        // Check if all enemies defeated
+        if (gameState.combat.enemies.length === 0) {
+          completeArea();
+          return;
+        }
+      }
+      
+      // Take damage from enemy continuously while touching
+      // Apply freeze effect (reduce enemy attack while frozen)
+      let enemyAttackEffective = arrayEnemy.attack;
+      if (arrayEnemy.effects && arrayEnemy.effects.freeze && arrayEnemy.effects.freeze.timer > 0) {
+        enemyAttackEffective = enemyAttackEffective * (arrayEnemy.effects.freeze.slowFactor || 0.5);
+      }
+      // Apply stagger effect (reduce enemy attack while staggered)
+      if (arrayEnemy.effects && arrayEnemy.effects.stagger && arrayEnemy.effects.stagger.timer > 0) {
+        enemyAttackEffective = enemyAttackEffective * 0.3; // 70% reduction
+        arrayEnemy.effects.stagger.timer -= deltaTime;
+        if (arrayEnemy.effects.stagger.timer <= 0) {
+          delete arrayEnemy.effects.stagger;
+        }
+      }
+      // Apply player's equipped armor defense
+      const playerDefenseTotal = gameState.player.defense + (gameState.equipped.armor ? (gameState.equipped.armor.stats.defense || 0) : 0);
+      let enemyDamage = Math.max(1, enemyAttackEffective - playerDefenseTotal);
+      
+      // Shield blocking mechanic
+      const shield = gameState.equipped.armor && gameState.equipped.armor.weaponType === "shield" ? gameState.equipped.armor : null;
+      if (shield && Math.random() < 0.3) { // 30% block chance
+        enemyDamage = 0;
+        if (gameState.combat.floatingTexts && gameState.combat.weaponMechanics) {
+          const wm = gameState.combat.weaponMechanics;
+          if (!wm.lastBlock || Date.now() - wm.lastBlock > 500) { // Throttle block messages
+            gameState.combat.floatingTexts.push({ x: gameState.combat.playerX, y: 280, text: "BLOCK!", ttl: 0.8, alpha: 1, color: '#6ef' });
+            wm.lastBlock = Date.now();
+          }
+        }
+      }
+      
+      gameState.player.hp -= enemyDamage * deltaTime;
+      
+      if (gameState.player.hp <= 0) {
+        gameState.player.hp = 0;
+        gameOver();
         return;
       }
-    }
-    
-    // Take damage from enemy continuously while touching
-    // Apply freeze effect (reduce enemy attack while frozen)
-    let enemyAttackEffective = enemy.attack;
-    if (enemy.effects && enemy.effects.freeze && enemy.effects.freeze.timer > 0) {
-      enemyAttackEffective = enemyAttackEffective * (enemy.effects.freeze.slowFactor || 0.5);
-    }
-    // Apply player's equipped armor defense
-    const playerDefenseTotal = gameState.player.defense + (gameState.equipped.armor ? (gameState.equipped.armor.stats.defense || 0) : 0);
-    const enemyDamage = Math.max(1, enemyAttackEffective - playerDefenseTotal);
-    gameState.player.hp -= enemyDamage * deltaTime;
-    
-    if (gameState.player.hp <= 0) {
-      gameState.player.hp = 0;
-      gameOver();
-      return;
-    }
+      } // Close else block for arrayEnemy check
+    } // Close if (index !== -1 && enemy) block
   }
   
   // Draw
@@ -1915,6 +2609,10 @@ function checkCollision(rect1, rect2) {
 }
 
 function drawASCII(text, x, y, color, fontSize = 12) {
+  if (!ctx) {
+    console.warn('[DEBUG] drawASCII called but ctx is not available');
+    return;
+  }
   ctx.fillStyle = color;
   ctx.font = `${fontSize}px monospace`;
   ctx.textAlign = "center"; // draw centered so variable-width frames stay anchored
@@ -1971,6 +2669,10 @@ function getPlayerASCIIWithEquipment() {
 }
 
 function drawASCII(text, x, y, color, fontSize = 12) {
+  if (!ctx) {
+    console.warn('[DEBUG] drawASCII called but ctx is not available');
+    return;
+  }
   ctx.fillStyle = color;
   ctx.font = `${fontSize}px monospace`;
   ctx.textAlign = "center"; // draw centered so variable-width frames stay anchored
@@ -2345,12 +3047,21 @@ function pauseRPG() {
 }
 
 function exitRPG() {
+  console.log('[DEBUG] exitRPG called');
   if (gameState.combat.active) {
     gameState.combat.active = false;
-    cancelAnimationFrame(animationFrameId);
-    showIdleMenu("gathering-menu");
-    el("combat-section").classList.add("hidden");
-    el("idle-section").classList.remove("hidden");
+    if (typeof cancelAnimationFrame === 'function' && typeof animationFrameId !== 'undefined') {
+      cancelAnimationFrame(animationFrameId);
+    }
+    // Clear any active projectiles so they don't persist between combats
+    gameState.combat.projectiles = [];
+    if (typeof showIdleMenu === 'function') {
+      showIdleMenu("gathering-menu");
+    }
+    const combatSection = document.getElementById("combat-section");
+    const idleSection = document.getElementById("idle-section");
+    if (combatSection) combatSection.classList.add("hidden");
+    if (idleSection) idleSection.classList.remove("hidden");
   }
 }
 
@@ -2431,14 +3142,10 @@ function loadGame() {
         };
         const mappedActionId = actionMap[structure.effect];
         if (mappedActionId) {
-          const level = gameState.structureLevels[structure.id] || 1;
-          // Apply upgrades scaling: amount increases by 1.5^(level-1), rate improves by 0.8^(level-1)
-          const scaledAmount = +(structure.amount * Math.pow(1.5, Math.max(0, level - 1))).toFixed(2);
-          const scaledRate = Math.max(1000, Math.floor(structure.rate * Math.pow(0.8, Math.max(0, level - 1))));
           gameState.autoGenerators[mappedActionId] = { 
-            rate: scaledRate,
+            rate: structure.rate,
             resource: structure.resource,
-            amount: scaledAmount
+            amount: structure.amount
           };
           startAutoGenerator(mappedActionId, structure);
         }
@@ -2476,120 +3183,204 @@ function loadGame() {
 // Event Listeners
 function initEventListeners() {
   // Main Menu
-  el("btn-start").addEventListener("click", () => {
-    showScreen("game-screen");
-    refreshStats();
-    refreshGatheringMenu();
-    refreshMagicMenu();
-    refreshCraftingMenu();
-    refreshStructuresMenu();
-    refreshInventory();
-    addLog("Game started!");
-  });
-  
-  el("btn-load").addEventListener("click", () => {
-    if (loadGame()) {
-      showScreen("game-screen");
-      refreshGatheringMenu();
-      refreshMagicMenu();
-      refreshCraftingMenu();
-      refreshStructuresMenu();
-      refreshInventory();
-      // Restart auto-generators after load based on built structures
-      structures.forEach(structure => {
-        if (gameState.unlockedIdleFeatures.includes(structure.id)) {
-          const actionMap = {
-            "autoWood": "gatherWood",
-            "autoMeat": "gatherMeat",
-            "autoWater": "gatherWater",
-            "autoPlants": "gatherPlants",
-            "autoStone": "gatherStone",
-            "autoRitualStones": "gatherRitualStones"
-          };
-          const mappedActionId = actionMap[structure.effect];
-          if (mappedActionId) {
-            gameState.autoGenerators[mappedActionId] = { 
-              rate: structure.rate,
-              resource: structure.resource,
-              amount: structure.amount
-            };
-            startAutoGenerator(mappedActionId, structure);
-          }
-        }
-      });
+  const startBtn = document.getElementById("btn-start");
+  if (startBtn) {
+    startBtn.addEventListener("click", startGame);
+    try { console.log('[DEBUG] Start button event listener attached'); } catch (e) {}
+  } else {
+    try { console.warn('[DEBUG] Start button not found when attaching listener'); } catch (e) {}
+  }
+
+  // Delegated fallback: catch clicks even if the button is replaced later
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!t) return;
+    if (t.id === 'btn-start') {
+      try { console.log('[DEBUG] Delegated click handler triggered for btn-start'); } catch (e) {}
+      startGame();
     }
   });
   
-  el("btn-settings").addEventListener("click", () => {
-    showScreen("settings-screen");
-  });
+  const loadBtn = document.getElementById("btn-load");
+  if (loadBtn) {
+    loadBtn.addEventListener("click", () => {
+      if (loadGame()) {
+        showScreen("game-screen");
+        refreshGatheringMenu();
+        refreshMagicMenu();
+        refreshCraftingMenu();
+        refreshStructuresMenu();
+        refreshInventory();
+        // Restart auto-generators after load based on built structures
+        structures.forEach(structure => {
+          if (gameState.unlockedIdleFeatures.includes(structure.id)) {
+            const actionMap = {
+              "autoWood": "gatherWood",
+              "autoMeat": "gatherMeat",
+              "autoWater": "gatherWater",
+              "autoPlants": "gatherPlants",
+              "autoStone": "gatherStone",
+              "autoRitualStones": "gatherRitualStones"
+            };
+            const mappedActionId = actionMap[structure.effect];
+            if (mappedActionId) {
+              gameState.autoGenerators[mappedActionId] = { 
+                rate: structure.rate,
+                resource: structure.resource,
+                amount: structure.amount
+              };
+              startAutoGenerator(mappedActionId, structure);
+            }
+          }
+        });
+      }
+    });
+  }
   
-  el("btn-settings-back").addEventListener("click", () => {
-    showScreen("main-menu");
-  });
+  const settingsBtn = document.getElementById("btn-settings");
+  if (settingsBtn) {
+    settingsBtn.addEventListener("click", () => {
+      showScreen("settings-screen");
+    });
+  }
+  
+  const settingsBackBtn = document.getElementById("btn-settings-back");
+  if (settingsBackBtn) {
+    settingsBackBtn.addEventListener("click", () => {
+      showScreen("main-menu");
+    });
+  }
   
   // Settings
-  el("volume-slider").addEventListener("input", (e) => {
-    gameState.settings.volume = parseInt(e.target.value);
-    el("volume-value").textContent = gameState.settings.volume;
-  });
+  const volumeSlider = document.getElementById("volume-slider");
+  if (volumeSlider) {
+    volumeSlider.addEventListener("input", (e) => {
+      gameState.settings.volume = parseInt(e.target.value);
+      const volumeValue = document.getElementById("volume-value");
+      if (volumeValue) volumeValue.textContent = gameState.settings.volume;
+    });
+  }
   
-  el("auto-save-toggle").addEventListener("change", (e) => {
-    gameState.settings.autoSave = e.target.checked;
-  });
+  const autoSaveToggle = document.getElementById("auto-save-toggle");
+  if (autoSaveToggle) {
+    autoSaveToggle.addEventListener("change", (e) => {
+      gameState.settings.autoSave = e.target.checked;
+    });
+  }
   
-  // Idle Navigation
-  el("btn-gathering").addEventListener("click", () => {
-    showIdleMenu("gathering-menu");
-    refreshGatheringMenu();
-  });
+  // Idle Navigation - attach both direct listeners and event delegation
+  attachMenuEventListeners();
   
-  el("btn-magic").addEventListener("click", () => {
-    showIdleMenu("magic-menu");
-    refreshMagicMenu();
-  });
+  // Also attach direct listeners as primary method
+  const btnGathering = document.getElementById("btn-gathering");
+  if (btnGathering) {
+    btnGathering.addEventListener("click", () => {
+      console.log('[DEBUG] Gathering button clicked (direct)');
+      showIdleMenu("gathering-menu");
+      refreshGatheringMenu();
+    });
+    console.log('[DEBUG] Gathering button event listener attached');
+  } else {
+    console.warn('[DEBUG] Gathering button not found');
+  }
   
-  el("btn-crafting").addEventListener("click", () => {
-    showIdleMenu("crafting-menu");
-    refreshCraftingMenu();
-  });
+  const btnMagic = document.getElementById("btn-magic");
+  if (btnMagic) {
+    btnMagic.addEventListener("click", () => {
+      console.log('[DEBUG] Magic button clicked (direct)');
+      showIdleMenu("magic-menu");
+      refreshMagicMenu();
+    });
+    console.log('[DEBUG] Magic button event listener attached');
+  } else {
+    console.warn('[DEBUG] Magic button not found');
+  }
   
-  el("btn-structures").addEventListener("click", () => {
-    showIdleMenu("structures-menu");
-    refreshStructuresMenu();
-  });
+  const btnCrafting = document.getElementById("btn-crafting");
+  if (btnCrafting) {
+    btnCrafting.addEventListener("click", () => {
+      console.log('[DEBUG] Crafting button clicked (direct)');
+      showIdleMenu("crafting-menu");
+      refreshCraftingMenu();
+    });
+    console.log('[DEBUG] Crafting button event listener attached');
+  } else {
+    console.warn('[DEBUG] Crafting button not found');
+  }
   
-  el("btn-inventory").addEventListener("click", () => {
-    showIdleMenu("inventory-menu");
-    refreshInventory();
-  });
+  const btnStructures = document.getElementById("btn-structures");
+  if (btnStructures) {
+    btnStructures.addEventListener("click", () => {
+      console.log('[DEBUG] Structures button clicked (direct)');
+      showIdleMenu("structures-menu");
+      refreshStructuresMenu();
+    });
+    console.log('[DEBUG] Structures button event listener attached');
+  } else {
+    console.warn('[DEBUG] Structures button not found');
+  }
   
-  el("btn-combat").addEventListener("click", () => {
-    showAreaSelection();
-  });
+  const btnInventory = document.getElementById("btn-inventory");
+  if (btnInventory) {
+    btnInventory.addEventListener("click", () => {
+      console.log('[DEBUG] Inventory button clicked (direct)');
+      showIdleMenu("inventory-menu");
+      refreshInventory();
+    });
+    console.log('[DEBUG] Inventory button event listener attached');
+  } else {
+    console.warn('[DEBUG] Inventory button not found');
+  }
   
-  el("btn-cancel-area-selection").addEventListener("click", () => {
-    el("area-selection-overlay").classList.add("hidden");
-  });
+  const btnCombat = document.getElementById("btn-combat");
+  if (btnCombat) {
+    btnCombat.addEventListener("click", () => {
+      console.log('[DEBUG] Combat button clicked');
+      showAreaSelection();
+    });
+    console.log('[DEBUG] Combat button event listener attached');
+  } else {
+    console.warn('[DEBUG] Combat button not found');
+  }
   
-  el("btn-exit-combat").addEventListener("click", () => {
-    exitRPG();
-  });
+  const btnCancelArea = document.getElementById("btn-cancel-area-selection");
+  if (btnCancelArea) {
+    btnCancelArea.addEventListener("click", () => {
+      const overlay = document.getElementById("area-selection-overlay");
+      if (overlay) overlay.classList.add("hidden");
+    });
+  }
   
-  el("btn-pause").addEventListener("click", () => {
-    pauseRPG();
-  });
-  
-  el("btn-save-game").addEventListener("click", () => {
-    saveGame();
-  });
-  
-  el("btn-menu").addEventListener("click", () => {
-    if (gameState.combat.active) {
+  const btnExitCombat = document.getElementById("btn-exit-combat");
+  if (btnExitCombat) {
+    btnExitCombat.addEventListener("click", () => {
       exitRPG();
-    }
-    showScreen("main-menu");
-  });
+    });
+  }
+  
+  const btnPause = document.getElementById("btn-pause");
+  if (btnPause) {
+    btnPause.addEventListener("click", () => {
+      pauseRPG();
+    });
+  }
+  
+  const btnSaveGame = document.getElementById("btn-save-game");
+  if (btnSaveGame) {
+    btnSaveGame.addEventListener("click", () => {
+      saveGame();
+    });
+  }
+  
+  const btnMenu = document.getElementById("btn-menu");
+  if (btnMenu) {
+    btnMenu.addEventListener("click", () => {
+      if (gameState.combat.active) {
+        exitRPG();
+      }
+      showScreen("main-menu");
+    });
+  }
   
   // Keyboard shortcuts
   document.addEventListener("keydown", (e) => {
@@ -2623,7 +3414,9 @@ function initEventListeners() {
 
 // Initialize
 function init() {
+  try { console.log('[DEBUG] init()'); } catch(e){}
   initRPG();
+  try { console.log('[DEBUG] calling initEventListeners()'); } catch(e){}
   initEventListeners();
   showScreen("main-menu");
   // Start passive healing system (runs in background and can be modified by structures)
@@ -2635,6 +3428,54 @@ function init() {
 
 // Start game when page loads
 window.addEventListener("DOMContentLoaded", init);
+
+// Global error hook to help detect initialization/runtime errors
+window.addEventListener('error', function (ev) {
+  try {
+    console.error('[DEBUG] window error:', ev && ev.message);
+    if (document && document.body) document.body.setAttribute('data-js-error', String(ev && ev.message));
+  } catch (e) {}
+});
+
+// If the DOM is already ready (script loaded after DOMContentLoaded), call init immediately
+try {
+  if (document && document.readyState && document.readyState !== 'loading') {
+    try { console.log('[DEBUG] DOM already ready — calling init() immediately'); } catch (e) {}
+    init();
+  }
+} catch (e) {}
+
+// Fallback global click handler: ensures Start Game can be triggered even if
+// initialization didn't run (helps when event wiring is skipped or blocked).
+document.addEventListener('click', (e) => {
+  try {
+    const t = e.target;
+    if (!t) return;
+    if (t.id === 'btn-start') {
+      try { console.log('[FALLBACK] #btn-start clicked'); } catch (e) {}
+      try {
+        // Use global startGame function if available, otherwise fall back to individual calls
+        if (typeof startGame === 'function') {
+          startGame();
+        } else {
+          // Best-effort start sequence (calls same public functions used by init)
+          if (typeof showScreen === 'function') showScreen('game-screen');
+          if (typeof refreshStats === 'function') refreshStats();
+          if (typeof refreshGatheringMenu === 'function') refreshGatheringMenu();
+          if (typeof refreshMagicMenu === 'function') refreshMagicMenu();
+          if (typeof refreshCraftingMenu === 'function') refreshCraftingMenu();
+          if (typeof refreshStructuresMenu === 'function') refreshStructuresMenu();
+          if (typeof refreshInventory === 'function') refreshInventory();
+          try { document.body.setAttribute('data-start-clicked', String(Date.now())); } catch (e) {}
+          try { addLog('Game started! [fallback]'); } catch (e) {}
+        }
+      } catch (err) {
+        try { console.error('[FALLBACK] start error', err); } catch (e) {}
+        try { document.body.setAttribute('data-js-error', String(err && err.message)); } catch (e) {}
+      }
+    }
+  } catch (err) {}
+});
 
 /* ASCII Animator: walking and attacking preview that runs while in RPG */
 const asciiAnimator = {
@@ -2779,31 +3620,5 @@ function stopAsciiAnimation() {
 }
 
 // Hook animator into RPG lifecycle safely (preserve existing functions)
-if (typeof startRPG === 'function') {
-  const _startRPG = startRPG;
-  startRPG = function() {
-    _startRPG();
-    startAsciiAnimation();
-  };
-}
-if (typeof exitRPG === 'function') {
-  const _exitRPG = exitRPG;
-  exitRPG = function() {
-    stopAsciiAnimation();
-    _exitRPG();
-  };
-}
-if (typeof completeArea === 'function') {
-  const _completeArea = completeArea;
-  completeArea = function() {
-    stopAsciiAnimation();
-    _completeArea();
-  };
-}
-if (typeof gameOver === 'function') {
-  const _gameOver = gameOver;
-  gameOver = function() {
-    stopAsciiAnimation();
-    _gameOver();
-  };
-}
+// Note: startAsciiAnimation is now called directly from startRPG
+// Other functions can call stopAsciiAnimation if needed
