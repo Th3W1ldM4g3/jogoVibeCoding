@@ -5411,47 +5411,17 @@ function loadGame() {
 }
 
 // Function to initialize main menu buttons based on save state
+let mainMenuListenersAttached = { continue: false, newGame: false };
 function initMainMenu() {
   const continueBtn = document.getElementById("btn-continue");
   const newGameBtn = document.getElementById("btn-new-game");
   const saveData = localStorage.getItem("survivalMagicRPG_save");
   
+  // Show/hide Continue button based on save state
   if (saveData) {
     // Save exists - show Continue button on top
     if (continueBtn) {
       continueBtn.style.display = "block";
-      continueBtn.addEventListener("click", () => {
-        if (loadGame()) {
-          showScreen("game-screen");
-          refreshGatheringMenu();
-          refreshMagicMenu();
-          refreshCraftingMenu();
-          refreshStructuresMenu();
-          refreshInventory();
-          // Restart auto-generators after load based on built structures
-          structures.forEach(structure => {
-            if (gameState.unlockedIdleFeatures.includes(structure.id)) {
-              const actionMap = {
-                "autoWood": "gatherWood",
-                "autoMeat": "gatherMeat",
-                "autoWater": "gatherWater",
-                "autoPlants": "gatherPlants",
-                "autoStone": "gatherStone",
-                "autoRitualStones": "gatherRitualStones"
-              };
-              const mappedActionId = actionMap[structure.effect];
-              if (mappedActionId) {
-                gameState.autoGenerators[mappedActionId] = { 
-                  rate: structure.rate,
-                  resource: structure.resource,
-                  amount: structure.amount
-                };
-                startAutoGenerator(mappedActionId, structure);
-              }
-            }
-          });
-        }
-      });
     }
   } else {
     // No save - hide Continue button
@@ -5460,8 +5430,50 @@ function initMainMenu() {
     }
   }
   
-  if (newGameBtn) {
-    newGameBtn.addEventListener("click", () => {
+  // Attach Continue button listener (only once)
+  if (saveData && continueBtn && !mainMenuListenersAttached.continue) {
+    continueBtn.addEventListener("click", () => {
+      if (loadGame()) {
+        showScreen("game-screen");
+        refreshGatheringMenu();
+        refreshMagicMenu();
+        refreshCraftingMenu();
+        refreshStructuresMenu();
+        refreshInventory();
+        // Restart auto-generators after load based on built structures
+        structures.forEach(structure => {
+          if (gameState.unlockedIdleFeatures.includes(structure.id)) {
+            const actionMap = {
+              "autoWood": "gatherWood",
+              "autoMeat": "gatherMeat",
+              "autoWater": "gatherWater",
+              "autoPlants": "gatherPlants",
+              "autoStone": "gatherStone",
+              "autoRitualStones": "gatherRitualStones"
+            };
+            const mappedActionId = actionMap[structure.effect];
+            if (mappedActionId) {
+              gameState.autoGenerators[mappedActionId] = { 
+                rate: structure.rate,
+                resource: structure.resource,
+                amount: structure.amount
+              };
+              startAutoGenerator(mappedActionId, structure);
+            }
+          }
+        });
+      }
+    });
+    mainMenuListenersAttached.continue = true;
+  }
+  
+  // Attach New Game button listener (only once)
+  if (newGameBtn && !mainMenuListenersAttached.newGame) {
+    newGameBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('[DEBUG] New Game button clicked');
+      
       // Reset game state to initial values
       gameState.player = {
         hp: 20,
@@ -5508,6 +5520,10 @@ function initMainMenu() {
       
       startGame();
     });
+    mainMenuListenersAttached.newGame = true;
+    console.log('[DEBUG] New Game button event listener attached');
+  } else if (!newGameBtn) {
+    console.warn('[DEBUG] New Game button not found when initMainMenu was called');
   }
 }
 
@@ -5823,26 +5839,30 @@ try {
   }
 } catch (e) {}
 
-// Fallback global click handler for Continue/New Game buttons
+// Fallback global click handler for Continue/New Game buttons (only if listeners haven't been attached yet)
 document.addEventListener('click', (e) => {
   try {
     const t = e.target;
     if (!t) return;
-    if (t.id === 'btn-continue' || t.id === 'btn-new-game') {
-      // Let the initMainMenu handler take care of it
+    // Only use fallback if listeners haven't been attached yet
+    if (t.id === 'btn-new-game' && !mainMenuListenersAttached.newGame) {
       initMainMenu();
-      if (t.id === 'btn-continue') {
-        const saveData = localStorage.getItem("survivalMagicRPG_save");
-        if (saveData && typeof loadGame === 'function') {
-          if (loadGame()) {
-            if (typeof showScreen === 'function') showScreen('game-screen');
-          }
-        }
-      } else if (t.id === 'btn-new-game') {
-        if (typeof startGame === 'function') startGame();
-      }
+      // Trigger click again after initialization
+      setTimeout(() => {
+        const btn = document.getElementById('btn-new-game');
+        if (btn) btn.click();
+      }, 10);
+    } else if (t.id === 'btn-continue' && !mainMenuListenersAttached.continue) {
+      initMainMenu();
+      // Trigger click again after initialization
+      setTimeout(() => {
+        const btn = document.getElementById('btn-continue');
+        if (btn) btn.click();
+      }, 10);
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error('Error in main menu click handler:', err);
+  }
 });
 
 /* ASCII Animator: walking and attacking preview that runs while in RPG */
