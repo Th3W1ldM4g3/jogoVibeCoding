@@ -729,6 +729,592 @@ h2 {
   margin-bottom: 16px;
 }
 
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  background: linear-gradient(180deg, #1a1a1f, #0f1113);
+  border: 1px solid rgba(212, 107, 255, 0.3);
+  padding: 8px 12px;
+  border-radius: 6px;
+  z-index: 10000;
+  max-width: 300px;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.tooltip-name {
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.tooltip-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.tooltip-stats {
+  font-size: 11px;
+  color: var(--success);
+  margin-bottom: 4px;
+}
+
+.tooltip-lore {
+  font-size: 11px;
+  color: #d4bfff;
+  font-style: italic;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Diary System */
+.diary-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.diary-tab {
+  padding: 6px 12px;
+}
+
+.diary-tab.active {
+  background: var(--accent);
+  color: #000;
+}
+
+.diary-content {
+  padding: 12px;
+}
+
+.diary-entry {
+  background: #0c0d0f;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  border-left: 3px solid var(--accent);
+}
+
+.diary-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.diary-entry-header strong {
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.diary-count {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.diary-thoughts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diary-thought {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.5;
+  padding-left: 12px;
+  border-left: 2px solid rgba(212, 107, 255, 0.2);
+}
+
+.diary-thought.latest {
+  color: #d4bfff;
+  font-weight: 500;
+  border-left-color: var(--accent);
+}
+
+.diary-empty {
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+  padding: 40px 20px;
+}
+
+/* Quest System */
+.quest-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quest-tab {
+  padding: 6px 12px;
+}
+
+.quest-tab.active {
+  background: var(--accent);
+  color: #000;
+}
+
+.quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quest-item {
+  background: #0c0d0f;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  padding: 12px;
+  border-radius: 4px;
+}
+
+.quest-item.completed {
+  border-color: var(--success);
+  opacity: 0.7;
+}
+
+.quest-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.quest-name {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.quest-reward {
+  font-size: 11px;
+  color: var(--success);
+}
+
+.quest-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.quest-progress {
+  font-size: 11px;
+  color: #ccc;
+}
+
+/* Achievements */
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+}
+
+.achievement-card {
+  background: #0c0d0f;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  padding: 12px;
+  border-radius: 4px;
+}
+
+.achievement-card.unlocked {
+  border-color: var(--success);
+  background: rgba(110, 255, 255, 0.05);
+}
+
+.achievement-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.achievement-name {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.achievement-icon {
+  font-size: 20px;
+}
+
+.achievement-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.achievement-reward {
+  font-size: 11px;
+  color: var(--success);
+}
+
+/* Statistics */
+.statistics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background: #0c0d0f;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.stat-label {
+  color: var(--muted);
+}
+
+.stat-value {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Screen Shake Effect */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.screen-shake {
+  animation: shake 0.5s;
+}
+
+/* Area Transition */
+.area-transition {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeInOut 1.5s;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.area-transition-text {
+  font-size: 32px;
+  color: var(--accent);
+  text-align: center;
+  font-family: var(--mono);
+}
+
+/* Boss Introduction */
+.boss-intro {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeInOut 3s;
+}
+
+.boss-name {
+  font-size: 48px;
+  color: var(--danger);
+  text-align: center;
+  font-family: var(--mono);
+  text-shadow: 0 0 20px rgba(255, 68, 68, 0.8);
+  margin-bottom: 20px;
+}
+
+.boss-desc {
+  font-size: 18px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 600px;
+}
+
+/* Prestige Display */
+.prestige-display {
+  background: #0c0d0f;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(212, 107, 255, 0.3);
+}
+
+.prestige-level {
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.prestige-points {
+  font-size: 12px;
+  color: var(--success);
+}
+
+/* Amulet Slot */
+.amulet-slot {
+  background: #0c0d0f;
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  padding: 12px;
+  border-radius: 4px;
+  margin-top: 12px;
+  min-height: 60px;
+}
+
+.amulet-slot.has-amulet {
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+.amulet-equipped {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.amulet-name {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.amulet-effect {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Story/Lore */
+.story-content {
+  padding: 12px;
+}
+
+.story-intro {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 16px;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+.story-entry {
+  margin-bottom: 12px;
+  padding: 8px;
+  background: #0c0d0f;
+  border-radius: 4px;
+  border-left: 3px solid var(--accent);
+}
+
+.story-entry strong {
+  color: var(--accent);
+}
+
+/* Special Abilities */
+.abilities-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ability-btn {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.abilities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ability-item {
+  background: #0c0d0f;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  padding: 12px;
+  border-radius: 4px;
+}
+
+.ability-item.locked {
+  opacity: 0.6;
+}
+
+.ability-item.unlocked {
+  border-color: var(--success);
+}
+
+.ability-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ability-icon {
+  font-size: 18px;
+}
+
+.ability-name {
+  font-weight: 600;
+  color: var(--accent);
+  flex: 1;
+}
+
+.ability-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.ability-cooldown {
+  font-size: 11px;
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+/* Prestige */
+.prestige-content {
+  padding: 12px;
+}
+
+.prestige-display {
+  background: linear-gradient(180deg, #1a1a1f, #0f1113);
+  border: 2px solid var(--accent);
+  padding: 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+/* Tutorial */
+.tutorial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Allow clicks to pass through overlay */
+}
+
+.tutorial-overlay .tutorial-popup {
+  pointer-events: auto; /* But allow clicks on the popup itself */
+}
+
+/* Ensure highlighted elements are clickable */
+.tutorial-highlight {
+  pointer-events: none !important;
+}
+
+button[id*="btn-"]:not(.tutorial-popup button) {
+  position: relative;
+  z-index: 3006 !important;
+  pointer-events: auto !important;
+}
+
+.tutorial-popup {
+  background: linear-gradient(180deg, var(--panel), #0b0b0f);
+  border: 2px solid var(--accent);
+  padding: 24px;
+  border-radius: 8px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 0 30px rgba(212, 107, 255, 0.3);
+}
+
+.tutorial-step {
+  margin-bottom: 20px;
+}
+
+.tutorial-step-title {
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.tutorial-step-content {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.tutorial-highlight {
+  position: absolute;
+  border: 3px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(212, 107, 255, 0.6), inset 0 0 20px rgba(212, 107, 255, 0.2);
+  pointer-events: none;
+  z-index: 3001;
+  animation: tutorialPulse 1.5s ease-in-out infinite;
+}
+
+/* Make highlighted elements clickable */
+.tutorial-highlight ~ * {
+  pointer-events: auto;
+}
+
+/* Ensure buttons can be clicked even with overlay */
+button[id*="btn-"] {
+  position: relative;
+  z-index: 3004 !important;
+  pointer-events: auto !important;
+}
+
+@keyframes tutorialPulse {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(212, 107, 255, 0.6), inset 0 0 20px rgba(212, 107, 255, 0.2);
+    border-color: var(--accent);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(212, 107, 255, 0.9), inset 0 0 30px rgba(212, 107, 255, 0.4);
+    border-color: #e885ff;
+  }
+}
+
+.tutorial-pointer {
+  position: absolute;
+  z-index: 3002;
+  font-size: 48px;
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(212, 107, 255, 0.8);
+  animation: tutorialPoint 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes tutorialPoint {
+  0%, 100% { transform: translateY(0); opacity: 0.8; }
+  50% { transform: translateY(-10px); opacity: 1; }
+}
+
+.tutorial-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  z-index: 3002;
+  pointer-events: none;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .game-container {

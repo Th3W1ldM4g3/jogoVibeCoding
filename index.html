@@ -12,50 +12,11 @@
     <div class="menu-container">
       <h1 class="game-title">Survival Magic RPG</h1>
       <div class="menu-buttons">
-        <button class="btn btn-large" id="btn-start">Start Game</button>
-        <button class="btn btn-large" id="btn-load">Load Game</button>
+        <button class="btn btn-large" id="btn-continue" style="display: none;">Continue Game</button>
+        <button class="btn btn-large" id="btn-new-game">New Game</button>
         <button class="btn btn-large" id="btn-settings">Settings</button>
       </div>
     </div>
-      <script>
-        // Inline fallback to detect clicks on Start Game independent of external JS
-        (function(){
-          try { console.log('[INLINE] small click detector injected'); } catch(e){}
-          document.addEventListener('click', function(e){
-            try {
-              var t = e.target;
-              if (t && t.id === 'btn-start') {
-                try { console.log('[INLINE] btn-start clicked'); } catch(e){}
-                try { document.body.setAttribute('data-start-clicked-inline', String(Date.now())); } catch(e){}
-                // Try to call startGame if it's available (from script.js)
-                if (typeof startGame === 'function') {
-                  try { console.log('[INLINE] Calling startGame()'); } catch(e){}
-                  startGame();
-                } else {
-                  try { console.log('[INLINE] startGame not available yet, waiting for script.js...'); } catch(e){}
-                  // Wait for script.js to load and retry
-                  var retries = 0;
-                  var maxRetries = 10;
-                  var checkInterval = setInterval(function() {
-                    retries++;
-                    if (typeof startGame === 'function') {
-                      clearInterval(checkInterval);
-                      try { console.log('[INLINE] startGame now available, calling it'); } catch(e){}
-                      startGame();
-                    } else if (retries >= maxRetries) {
-                      clearInterval(checkInterval);
-                      try { console.error('[INLINE] startGame still not available after', maxRetries, 'retries'); } catch(e){}
-                      alert('Game script failed to load. Please refresh the page.');
-                    }
-                  }, 100);
-                }
-              }
-            } catch(err) {
-              try { console.error('[INLINE] Error:', err); } catch(e){}
-            }
-          }, true);
-        })();
-      </script>
   </div>
 
   <!-- Settings Screen -->
@@ -72,6 +33,13 @@
             <input type="checkbox" id="auto-save-toggle" checked />
             Auto-save
           </label>
+        </div>
+        <div class="setting-item">
+          <label>Language / Idioma:</label>
+          <select id="language-select">
+            <option value="en">English</option>
+            <option value="pt-BR">Português (BR)</option>
+          </select>
         </div>
       </div>
       <div class="menu-buttons">
@@ -126,6 +94,12 @@
             <button class="btn" id="btn-crafting">Crafting</button>
             <button class="btn" id="btn-structures">Structures</button>
             <button class="btn" id="btn-inventory">Inventory (I)</button>
+            <button class="btn" id="btn-quests">Quests (Q)</button>
+            <button class="btn" id="btn-achievements">Achievements (A)</button>
+            <button class="btn" id="btn-statistics">Statistics (S)</button>
+            <button class="btn" id="btn-diary">Diary</button>
+            <button class="btn" id="btn-prestige">Prestige</button>
+            <button class="btn" id="btn-abilities">Abilities</button>
             <button class="btn" id="btn-combat">Enter Combat (M)</button>
             <button class="btn" id="btn-save-game">Save</button>
             <button class="btn" id="btn-menu">Menu</button>
@@ -167,6 +141,54 @@
             <div id="inventory-grid" class="inventory-grid"></div>
           </div>
 
+          <!-- Quests Menu -->
+          <div id="quests-menu" class="menu-content hidden">
+            <h2>Quests</h2>
+            <div class="quest-tabs">
+              <button class="btn btn-small quest-tab active" data-tab="daily">Daily Quests</button>
+              <button class="btn btn-small quest-tab" data-tab="subquests">Subquests</button>
+            </div>
+            <div id="daily-quests-list" class="quest-list"></div>
+            <div id="subquests-list" class="quest-list hidden"></div>
+          </div>
+
+          <!-- Achievements Menu -->
+          <div id="achievements-menu" class="menu-content hidden">
+            <h2>Achievements</h2>
+            <div id="achievements-grid" class="achievements-grid"></div>
+          </div>
+
+          <!-- Statistics Menu -->
+          <div id="statistics-menu" class="menu-content hidden">
+            <h2>Statistics</h2>
+            <div id="statistics-list" class="statistics-list"></div>
+          </div>
+
+          <!-- Diary Menu -->
+          <div id="diary-menu" class="menu-content hidden">
+            <h2>Diary</h2>
+            <div class="diary-tabs">
+              <button class="btn btn-small diary-tab active" data-tab="enemies">Enemies</button>
+              <button class="btn btn-small diary-tab" data-tab="areas">Areas</button>
+              <button class="btn btn-small diary-tab" data-tab="items">Items</button>
+              <button class="btn btn-small diary-tab" data-tab="bosses">Bosses</button>
+            </div>
+            <div id="diary-content" class="diary-content"></div>
+          </div>
+
+          <!-- Prestige Menu -->
+          <div id="prestige-menu" class="menu-content hidden">
+            <h2>Prestige</h2>
+            <div id="prestige-content" class="prestige-content"></div>
+          </div>
+
+          <!-- Special Abilities Menu -->
+          <div id="abilities-menu" class="menu-content hidden">
+            <h2>Special Abilities</h2>
+            <div id="abilities-list" class="abilities-list"></div>
+          </div>
+
+
         </div>
 
         <!-- Area Selection Overlay -->
@@ -200,8 +222,7 @@
             </div>
             <div class="combat-controls">
               <button class="btn" id="btn-pause">Pause (P)</button>
-              <button class="btn" id="btn-use-item-1">Use Item 1</button>
-              <button class="btn" id="btn-use-item-2">Use Item 2</button>
+              <div id="special-abilities-bar" class="abilities-bar"></div>
             </div>
           </div>
         </div>
@@ -214,46 +235,6 @@
       </div>
     </div>
   </div>
-<!-- Inline debug helper to detect how the page is being loaded and which script URL is used -->
-<script>
-  try {
-    console.log('[LOAD DEBUG] location', location.href);
-    console.log('[LOAD DEBUG] readyState', document.readyState);
-    Array.from(document.querySelectorAll('script')).map(s => s.src || '(inline)').forEach(s => console.log('[LOAD DEBUG] script', s));
-  } catch (e) { console.error(e); }
-</script>
-<script>
-  // Create script element to track loading
-  var script = document.createElement('script');
-  script.src = 'script.js';
-  script.onload = function() {
-    console.log('[LOAD DEBUG] script.js loaded successfully');
-    if (typeof startGame === 'function') {
-      console.log('[LOAD DEBUG] startGame is available');
-      document.body.setAttribute('data-script-loaded', 'true');
-    } else {
-      console.error('[LOAD ERROR] script.js loaded but startGame is not available');
-      document.body.setAttribute('data-script-error', 'startGame-missing');
-    }
-  };
-  script.onerror = function() {
-    console.error('[LOAD ERROR] Failed to load script.js');
-    document.body.setAttribute('data-script-error', 'load-failed');
-    alert('Failed to load game script. Please check that script.js exists and refresh the page.');
-  };
-  document.head.appendChild(script);
-</script>
-<script>
-  // Verify script.js loaded successfully after a short delay
-  window.addEventListener('load', function() {
-    setTimeout(function() {
-      if (typeof startGame === 'function') {
-        console.log('[LOAD DEBUG] Final check: startGame is available');
-      } else {
-        console.error('[LOAD ERROR] Final check: startGame is not available');
-        document.body.setAttribute('data-script-error', 'final-check-failed');
-      }
-    }, 100);
-  });
-</script>
+<!-- Load game script -->
+<script src="script.js"></script>
 </html>
